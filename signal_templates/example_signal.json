@@ -1,0 +1,11 @@
+{
+  "id": "signal-0001",
+  "source": "mock-agent",
+  "timestamp": "2025-06-28T22:00:00Z",
+  "data": {
+    "type": "price-alert",
+    "asset": "BTC/USDT",
+    "confidence": 0.87,
+    "action": "buy"
+  }
+}
