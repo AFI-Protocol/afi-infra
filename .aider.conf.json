@@ -1,0 +1,37 @@
+{
+  "include": [
+    "schemas/**/*.ts",
+    "signal_schema_test/**/*.ts",
+    "agent-prompts/**/*.md",
+    ".github/workflows/*.yml",
+    "runtime/**/*.ts",
+    "mentor/**/*.ts",
+    "cli/**/*.ts"
+  ],
+  "exclude": [
+    "**/*.test.ts.snap",
+    "node_modules/",
+    "dist/",
+    "build/",
+    "coverage/",
+    ".git/",
+    ".aider*"
+  ],
+  "message_model": "gpt-4o",
+  "edit_format": "diff",
+  "pretty": true,
+  "auto_commits": false,
+  "line_limit": 1000,
+  "chat_history_file": ".aider.chat.md",
+  "main_model": "gpt-4o",
+  "weak_model": "gpt-4o-mini",
+  "use_gitignore": true,
+  "auto_save": true,
+  "tool_name": "aider",
+  "repo_name": "afi-core",
+  "description": "Agentic Financial Intelligence: Core module config for schemas, prompts, and runtime validation",
+  "experimental": {
+    "agent_aware": true,
+    "semantic_block_suggestions": true
+  }
+}
