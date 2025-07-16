@@ -1,0 +1,15 @@
+{
+  "id": "signal_transmission_schema",
+  "version": "1.0.0",
+  "description": "Schema and agent role definition for transmitting enriched and finalized signals to designated endpoints or relay systems. Handles outbound routing, destination formatting, and transmission integrity.",
+  "files": {
+    "schema": "schemas/signal_transmission_schema.ts",
+    "prompt": "agent-prompts/agent-prompt.md",
+    "role": "agent-roles/agent-role.md"
+  },
+  "agent_type": "transmission",
+  "dependencies": [
+    "signal_finalization_schema"
+  ],
+  "status": "active"
+}
