@@ -1,0 +1,8 @@
+{
+  "name": "aos_sync_loop_schema",
+  "description": "Schema used by AFI agents to report sync state with AOS, including memory checkpoints and role coordination.",
+  "used_by": ["validators", "mentors", "operators", "builders"],
+  "tags": ["aos", "sync", "loop", "agent", "checkpoint"],
+  "status": "experimental",
+  "entry_point": "schemas/aos_sync_loop_schema.ts"
+}
