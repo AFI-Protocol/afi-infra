@@ -1,0 +1,9 @@
+{
+  "name": "mentor_judgment_schema",
+  "role": "feedback-loop",
+  "description": "Captures mentor evaluations of scoring agents for insight, alignment, and correction",
+  "language": "TypeScript",
+  "tags": ["mentor", "judgment", "alignment", "evaluation", "afi"],
+  "entry": "schemas/mentor_judgment_schema.ts",
+  "factory_ready": true
+}
