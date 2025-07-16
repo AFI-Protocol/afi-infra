@@ -1,0 +1,34 @@
+{
+  "name": "signal_variant_schema",
+  "version": "1.0.0",
+  "description": "Schema for representing signal variants within the AFI pipeline. This includes metadata about how signals differ from one another, such as source, transformation steps, or semantic meaning.",
+  "author": "AFI Protocol",
+  "last_updated": "2025-07-16T19:36:56.767931Z",
+  "tags": [
+    "schema",
+    "signal",
+    "variant",
+    "afi",
+    "codex"
+  ],
+  "schema_file": "signal_variant_schema.ts",
+  "schema_type": "TypeScript",
+  "purpose": "To standardize the description of variant signals for consistent validation and enrichment across multiple agents.",
+  "used_by": [
+    "variant-agent",
+    "enrichment-agent",
+    "analysis-agent"
+  ],
+  "status": "stable",
+  "examples": [
+    {
+      "variant_id": "vnt001",
+      "base_signal_ref": "sig_base_abc123",
+      "modifiers": [
+        "rescaled",
+        "normalized"
+      ],
+      "notes": "Variant created using z-score normalization."
+    }
+  ]
+}
