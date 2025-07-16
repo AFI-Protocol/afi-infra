@@ -1,0 +1,24 @@
+{
+  "schema_id": "signal_scoring_schema",
+  "version": "1.0.0",
+  "description": "Defines the structure for scoring enriched financial signals, including strength, confidence, and composite metrics.",
+  "inputs": [
+    "enriched_signal"
+  ],
+  "outputs": [
+    "scored_signal"
+  ],
+  "agent_role": "Signal Scorer",
+  "associated_prompt": "signal_scoring_prompt.md",
+  "agent_description": "agent_job_description.md",
+  "stage": "signal_scoring",
+  "tags": [
+    "scoring",
+    "signals",
+    "finance",
+    "metrics",
+    "analysis"
+  ],
+  "created_by": "Scarlet",
+  "created_at": "2025-07-16"
+}
