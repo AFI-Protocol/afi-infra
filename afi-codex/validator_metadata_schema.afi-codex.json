@@ -1,0 +1,23 @@
+{
+  "schema_id": "validator_metadata_schema",
+  "title": "Validator Metadata Schema",
+  "description": "Defines key metadata fields for validator agents within the AFI Protocol, including identity traits, staking context, performance summaries, behavioral patterns, and task alignment metrics.",
+  "version": "1.0.0",
+  "source": "afi-infra",
+  "authors": [
+    "AFI Protocol Core"
+  ],
+  "created": "2025-07-16",
+  "tags": [
+    "schema",
+    "validator",
+    "metadata",
+    "agent",
+    "afi-protocol"
+  ],
+  "related_schemas": [],
+  "schema_path": "schemas/validator_metadata_schema.ts",
+  "test_path": null,
+  "agent_prompt_path": "agent-prompts/agent-prompt.md",
+  "agent_role_path": "agent-roles/agent-job-description.md"
+}
