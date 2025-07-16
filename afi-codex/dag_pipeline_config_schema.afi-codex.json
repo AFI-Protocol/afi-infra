@@ -1,0 +1,22 @@
+{
+  "title": "DAG Pipeline Config Schema",
+  "description": "Defines the configuration structure for DAG-based pipeline execution in AFI.",
+  "input": {
+    "pipelineId": "Unique identifier for the DAG pipeline.",
+    "nodes": "Array of nodes containing id, type, config, and dependencies.",
+    "metadata": "Optional metadata including creator and creation time."
+  },
+  "output": "Validated DagPipelineConfig object to be processed by the AFI DAG Engine.",
+  "fileRefs": [
+    "schemas/dag_pipeline_config_schema.ts"
+  ],
+  "usedBy": [
+    "afi-dag-engine.ts"
+  ],
+  "tags": [
+    "schema",
+    "dag",
+    "pipeline",
+    "afi"
+  ]
+}
