@@ -1,0 +1,9 @@
+{
+  "name": "FinalizedSignalSchema",
+  "role": "finalization",
+  "description": "Schema for agents to finalize validated signals and prepare them for reward cycles or long-term storage.",
+  "language": "TypeScript",
+  "tags": ["schema", "signal", "finalization", "mint-first", "afi"],
+  "entry": "schemas/signal_finalization_schema.ts",
+  "version": "1.0.0"
+}
