@@ -1,0 +1,14 @@
+{
+  "name": "signal_analysis_schema",
+  "version": "1.0.0",
+  "description": "Schema for defining the structure of signal analysis tasks in the AFI signal pipeline, including fields for raw signal identifiers, analysis metadata, confidence scores, and output formatting.",
+  "tags": [
+    "signal",
+    "analysis",
+    "schema",
+    "afi"
+  ],
+  "schema_file": "signal_analysis_schema.ts",
+  "created_by": "Scarlet for Giovanni",
+  "last_updated": "2025-07-16"
+}
