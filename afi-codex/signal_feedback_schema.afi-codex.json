@@ -1,0 +1,9 @@
+{
+  "name": "signal_feedback_schema",
+  "role": "schema",
+  "description": "Captures post-mortem or live feedback on signals from users or validators for training loops and scoring refinement.",
+  "language": "TypeScript",
+  "tags": ["feedback", "signals", "training", "scoring", "evaluation"],
+  "entry": "schemas/signal_feedback_schema.ts",
+  "factory_ready": true
+}
