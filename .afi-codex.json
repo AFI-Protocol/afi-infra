@@ -1,0 +1,91 @@
+{
+  "codexVersion": "2.0.0",
+  "description": "AFI-Infra: Infrastructure layer for AFI Protocol including schemas, agent templates, and the T.S.S.D. Vault",
+  "lastUpdated": "2025-11-18T00:00:00Z",
+  "module": {
+    "name": "afi-infra",
+    "role": "infrastructure",
+    "description": "AFI-Infra provides foundational infrastructure for AFI Protocol, including signal schemas, agent role definitions, and the canonical T.S.S.D. Vault for signal lifecycle management."
+  },
+  "modules": [
+    {
+      "module": "afi-infra/tssd-vault",
+      "role": "canonical_signal_vault",
+      "entryPoint": "src/tssd/TSSDVaultClient.ts",
+      "description": "T.S.S.D. Vault: Canonical, auditable, training-ready memory for each AFI signal from RAW → ENRICHED → ANALYZED → SCORED → MINTED → REPLAYED",
+      "exposes": [
+        "ITSSDVaultClient",
+        "InMemoryTSSDVaultClient",
+        "VaultedSignalRecord",
+        "SignalLifecycleStage",
+        "SignalIdentity",
+        "RawSignalSnapshot",
+        "EnrichmentSnapshot",
+        "AnalysisSnapshot",
+        "ScoreSnapshot",
+        "MintSnapshot",
+        "PublicSurfaceView",
+        "ProprietaryDetailView",
+        "TrainingFlags",
+        "OutcomeSnapshot",
+        "TSSDVaultQuery"
+      ],
+      "dependsOn": [
+        "afi-core",
+        "afi-reactor",
+        "afi-token"
+      ],
+      "features": {
+        "lifecycleTracking": true,
+        "publicPrivateSeparation": true,
+        "trainingFlags": true,
+        "inMemoryImplementation": true,
+        "mongoBackedPlanned": true
+      },
+      "documentation": "docs/TSSD_VAULT_SPEC.md"
+    },
+    {
+      "module": "afi-infra/schemas",
+      "role": "schema_definitions",
+      "entryPoint": "schemas/index.ts",
+      "description": "Zod-based schema definitions for AFI signal pipeline stages",
+      "exposes": [
+        "SignalScoringSchema",
+        "FinalizedSignalSchema",
+        "SignalEnrichmentSchema",
+        "SignalAnalysisSchema",
+        "SignalFeedbackSchema",
+        "ValidatorMetadataSchema"
+      ]
+    },
+    {
+      "module": "afi-infra/agent-templates",
+      "role": "agent_scaffolding",
+      "description": "Agent role definitions, prompts, and job descriptions for AFI agents",
+      "paths": [
+        "agent-prompts/",
+        "agent-roles/",
+        "agent-stubs/"
+      ]
+    }
+  ],
+  "trackedBy": [
+    "Scarlet",
+    "augmentcode",
+    "factory.droid"
+  ],
+  "agentReady": true,
+  "features": {
+    "tssdVault": true,
+    "signalSchemas": true,
+    "agentTemplates": true,
+    "infraServices": true
+  },
+  "healthStatus": {
+    "tssdVaultImplementation": "in-memory",
+    "schemasActive": true,
+    "agentTemplatesReady": true,
+    "lastHealthCheck": "2025-11-18T00:00:00Z"
+  }
+}
+
