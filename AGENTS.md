@@ -120,34 +120,59 @@ export const MarketSentimentAnalyzerRole = {
 
 ## 8. How to Validate Locally
 
-**Note**: This repo currently has no automated test suite. Validation is manual.
+**Automated test suite available.** Run these before finalizing:
 
-Run these before finalizing:
 ```bash
-# If package.json exists:
+# Install dependencies
 npm install
-npm run build  # if available
-npm test  # if available
 
-# Otherwise, validate manually:
-# - Check schema syntax (YAML/JSON linting)
-# - Verify template completeness
-# - Ensure no secrets in code
-# - Test infrastructure definitions in dev environment
+# Run all tests (smoke + DAG deterministic)
+npm test
+
+# Run only smoke tests (CLI/entrypoint checks)
+npm run test:smoke
+
+# Run only DAG deterministic tests
+npm run test:dag
+
+# TypeScript type check
+npm run build
+
+# Watch mode for development
+npm run test:watch
 ```
 
-**Validation currently manual; CI pending; do not add logic until tests exist.**
+**Expected outcomes:**
+- ✅ All tests pass (<10s locally)
+- ✅ TypeScript compiles without errors
+- ✅ No secrets or credentials in code
+- ✅ Schemas are valid
+- ✅ CLI entrypoints execute without throwing
 
-Expected outcomes:
-- Schemas are valid
-- Templates are complete
-- No syntax errors
-- No secrets or credentials
+**Test coverage:**
+- Smoke tests: All CLI templates, agent stubs, infra services, TSSD client, schemas
+- DAG tests: Deterministic 3-node pipeline (ingest → enrich → score) with TSSD integration
 
 ---
 
 ## 9. CI / PR Expectations
 
+**Automated CI runs on all PRs** via `.github/workflows/validate-infra.yml`:
+
+**Test Job:**
+- ✅ TypeScript type check (`npm run build`)
+- ✅ All tests (`npm test`)
+- ✅ Smoke tests (`npm run test:smoke`)
+- ✅ DAG deterministic tests (`npm run test:dag`)
+
+**Validate Job:**
+- ✅ JSON syntax validation
+- ✅ Secret detection (blocks merge if secrets found)
+
+**PR Requirements:**
+- All tests must pass
+- No TypeScript errors
+- No secrets in code
 - Any new schema must include validation test
 - Any new template must include usage example
 - Documentation updates should reduce ambiguity

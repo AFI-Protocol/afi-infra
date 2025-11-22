@@ -1,0 +1,62 @@
+name: Validate AFI Infra
+
+on:
+  pull_request:
+    branches:
+      - main
+      - migration/multi-repo-reorg
+  push:
+    branches:
+      - main
+      - migration/multi-repo-reorg
+
+jobs:
+  test:
+    name: Run Tests
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run TypeScript type check
+        run: npm run build
+
+      - name: Run all tests
+        run: npm test
+
+      - name: Run smoke tests
+        run: npm run test:smoke
+
+      - name: Run DAG deterministic tests
+        run: npm run test:dag
+
+  validate:
+    name: Validate Configs
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Validate JSON files
+        run: |
+          find . -name "*.json" -not -path "./node_modules/*" -exec echo "Validating {}" \; -exec jq empty {} \;
+
+      - name: Check for secrets
+        run: |
+          if grep -r "sk-" --include="*.ts" --include="*.js" --include="*.json" --exclude-dir=node_modules .; then
+            echo "ERROR: Potential secret found in code"
+            exit 1
+          fi
+          echo "No secrets detected"
+

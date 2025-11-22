@@ -1,0 +1,29 @@
+{
+  "name": "afi-infra",
+  "version": "1.0.0",
+  "description": "Infrastructure services and templates for AFI Protocol",
+  "type": "module",
+  "scripts": {
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:smoke": "vitest run --testNamePattern='smoke'",
+    "test:dag": "vitest run --testNamePattern='DAG'",
+    "build": "tsc --noEmit"
+  },
+  "keywords": [
+    "afi",
+    "infrastructure",
+    "templates"
+  ],
+  "author": "AFI Protocol",
+  "license": "MIT",
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "typescript": "^5.3.0",
+    "vitest": "^1.0.0"
+  },
+  "dependencies": {
+    "zod": "^3.22.0"
+  }
+}
+
