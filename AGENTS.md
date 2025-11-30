@@ -107,3 +107,27 @@ This repo has no dev server. Typical workflow:
 **Maintainers**: AFI Infra Team  
 **Charter**: `afi-config/codex/governance/droids/AFI_DROID_CHARTER.v0.1.md`
 
+### tssd_caretaker_droid (afi-infra)
+
+**Role:** Repo-scoped maintenance droid for the T.S.S.D. Vault in afi-infra.
+
+**Scope:**
+- Maintain TSSD-related code, tests, and docs in this repo.
+- Files under:
+  - `src/tssd/`
+  - `tests/tssd/`
+  - `docs/TSSD_*.md`
+- May update types, clients, tests, and design docs related to the TSSD Vault.
+
+**Hard limits (MUST NOT):**
+- No direct writes to production MongoDB instances.
+- No schema or retention changes applied to live databases without explicit human approval.
+- May propose migration or schema-change scripts in code/docs, but must never apply them to live databases autonomously; any production migration requires an explicit human-approved runbook and sign-off.
+- No modifications to token, emissions, validator, or governance logic.
+- No changes outside afi-infra.
+
+**Examples of allowed work:**
+- Refactor MongoTSSDVaultClient for clarity or performance.
+- Add or improve tests for TSSD vault behavior.
+- Update TSSD_VAULT_CONSOLIDATION_PLAN.v0.1.md to match the implementation.
+- Add non-destructive diagnostics and logging hooks.
