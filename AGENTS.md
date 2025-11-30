@@ -1,180 +1,109 @@
-# AGENTS.md — AFI Infra Droid Instructions (v1)
+# afi-infra — Agent Instructions
 
-This file is the canonical instruction set for Factory.ai droids and other agents working in this repository.
-If AGENTS.md conflicts with README or docs, **AGENTS.md wins.**
+**afi-infra** provides infrastructure templates, agent role definitions, signal templates, and schema scaffolding for AFI Protocol. This repo is **template/stub oriented**, not production runtime.
 
----
-
-## 0. Repo Purpose
-
-**What this repo is for:**  
-Infrastructure services, agent templates, signal templates, and schema scaffolding for AFI Protocol. Provides reusable infra patterns, agent role definitions, and CLI templates.
-
-**What this repo is NOT for:**  
-- Core runtime logic (use afi-core)
-- DAG orchestration (use afi-reactor)
-- Production deployment (use afi-ops)
-- Deep business logic implementation
+**Global Authority**: All agents operating in AFI Protocol repos must follow `afi-config/codex/governance/droids/AFI_DROID_CHARTER.v0.1.md`. If this AGENTS.md conflicts with the Charter, **the Charter wins**.
 
 ---
 
-## 1. Prime Directives (Global AFI Rules)
+## Build & Test
 
-- **Scaffold, wire, and align context only.** Do not expand full feature logic unless explicitly instructed.
-- **Keep changes minimal and deterministic.**
-- **Preserve modular boundaries.** No cross-repo code moves unless asked.
-- **Codex + AOS are truth sources.** Whitepaper is narrative, not canonical.
-- **Never delete or overwrite without a replacement plan.**
-- **Prefer small patches over large refactors.**
-
----
-
-## 2. Allowed Tasks
-
-Droids MAY:
-- Add infrastructure stubs in `infra/`
-- Add agent role definitions in `agent-roles/`
-- Add agent prompts in `agent-prompts/`
-- Add signal templates in `signal_templates/`
-- Add schemas in `schemas/`
-- Add CLI templates in `cli_templates/`
-- Improve documentation in `docs/`
-- Add agent stubs in `agent-stubs/`
-
----
-
-## 3. Forbidden Tasks
-
-Droids MUST NOT:
-- Implement deep business logic beyond scaffolding
-- Add production infrastructure without approval
-- Modify core agent semantics without understanding downstream impact
-- Add dependencies that aren't standard in AFI
-- Change schema contracts without coordinating with consumers
-
----
-
-## 4. Key Invariants
-
-These must remain true after changes:
-- Templates remain minimal and reusable
-- Schemas are valid and type-safe
-- Agent roles are well-documented
-- No production secrets or credentials in templates
-- All stubs include clear TODO comments for next steps
-
----
-
-## 5. Repo Layout Map
-
-- `infra/` — Infrastructure service stubs
-- `agent-roles/` — Agent role definitions and personas
-- `agent-prompts/` — Reusable agent prompt templates
-- `agent-stubs/` — Agent implementation stubs
-- `signal_templates/` — Signal format templates
-- `schemas/` — Schema definitions
-- `cli_templates/` — CLI command templates
-- `docs/` — Documentation and guides
-- `src/` — Source code (if any)
-- `.afi-codex.json` — Repo metadata
-
----
-
-## 6. Codex / AOS Touchpoints
-
-- `.afi-codex.json` location: Root of repo (if exists)
-- AOS streams / registries referenced:
-  - Infrastructure service registry
-  - Agent role registry
-  - Signal template registry
-- Schema contracts this repo provides:
-  - Agent role schemas
-  - Infrastructure service schemas
-  - Signal template schemas
-
----
-
-## 7. Safe Patch Patterns
-
-When editing, prefer:
-- Small diffs, one intent per commit/patch
-- Additive changes over rewrites
-- Clear comments stating purpose and next steps
-- Template additions follow existing patterns
-- Stubs include usage examples
-
-Example safe patch:
-```typescript
-// TODO(droid): Add agent role for market sentiment analyzer
-// Expected behavior: Analyzes market sentiment from news sources
-// Usage: Import in afi-core for runtime instantiation
-export const MarketSentimentAnalyzerRole = {
-  name: "market-sentiment-analyzer",
-  description: "Analyzes market sentiment from news sources",
-  capabilities: ["sentiment-analysis", "news-parsing"],
-  // Stub: Add full role definition
-};
-```
-
----
-
-## 8. How to Validate Locally
-
-**Note**: This repo currently has no automated test suite. Validation is manual.
-
-Run these before finalizing:
 ```bash
-# If package.json exists:
+# Install dependencies
 npm install
-npm run build  # if available
-npm test  # if available
 
-# Otherwise, validate manually:
-# - Check schema syntax (YAML/JSON linting)
-# - Verify template completeness
-# - Ensure no secrets in code
-# - Test infrastructure definitions in dev environment
+# Build (type check only, no compilation)
+npm run build
+
+# Run all tests (Vitest)
+npm test
+
+# Run tests in watch mode
+npm run test:watch
+
+# Run smoke tests
+npm run test:smoke
+
+# Run DAG deterministic tests
+npm run test:dag
 ```
 
-**Validation currently manual; CI pending; do not add logic until tests exist.**
-
-Expected outcomes:
-- Schemas are valid
-- Templates are complete
-- No syntax errors
-- No secrets or credentials
+**Expected outcomes**: All tests pass (smoke + DAG deterministic), no TypeScript errors.
 
 ---
 
-## 9. CI / PR Expectations
+## Run Locally / Dev Workflow
 
-- Any new schema must include validation test
-- Any new template must include usage example
-- Documentation updates should reduce ambiguity
-- PR description must explain what was added and why
+This repo has no dev server. Typical workflow:
 
----
-
-## 10. Current Priorities
-
-1. Organize agent-roles/ for clarity
-2. Add comprehensive signal templates
-3. Document schema contracts
-4. Clean up agent-stubs/ with clear TODOs
+1. Edit templates in `templates/` or `stubs/`
+2. Update agent role definitions
+3. Run `npm run test:smoke` to verify templates are valid
+4. Run `npm run test:dag` to ensure DAG determinism
+5. Test templates by using them in target repos (afi-reactor, afi-core)
 
 ---
 
-## 11. If You're Unsure
+## Architecture Overview
 
-Default to:
-1. Do nothing risky
-2. Add a stub + TODO comment
-3. Document the uncertainty
-4. Ask a human maintainer (tag @afi-infra-team in PR)
+**Purpose**: Provide reusable infrastructure patterns, agent stubs, and config scaffolding. **Not** for production runtime.
+
+**Key directories**:
+- `templates/` — Infrastructure templates (agent configs, signal templates)
+- `stubs/` — Agent role stubs (validator, scorer, mentor)
+- `schemas/` — Schema scaffolding and examples
+- `tests/` — Smoke tests and DAG deterministic tests
+
+**Consumed by**: afi-reactor, afi-core, afi-ops, afi-factory  
+**Depends on**: afi-config (schemas)
 
 ---
 
-**Last Updated**: 2025-11-22  
+## Security
+
+- **Templates are executed by agents**: Ensure no hardcoded secrets or unsafe defaults.
+- **No production URLs**: Use placeholder URLs in templates.
+- **Stub validation**: Agent stubs must follow interface contracts from afi-core.
+
+---
+
+## Git Workflows
+
+- **Base branch**: `main` or `migration/multi-repo-reorg`
+- **Branch naming**: `feat/`, `fix/`, `docs/`
+- **Commit messages**: Conventional commits (e.g., `feat(templates): add mentor agent stub`)
+- **Before committing**: Run `npm test` (smoke + DAG tests)
+
+---
+
+## Conventions & Patterns
+
+- **Language**: TypeScript (ESM), YAML/JSON for templates
+- **Template naming**: kebab-case (e.g., `validator-agent-template.yaml`)
+- **Stubs**: Follow existing patterns, prefer extending over inventing
+- **Tests**: Vitest, smoke tests for templates, DAG tests for determinism
+
+---
+
+## Scope & Boundaries for Agents
+
+**Allowed**:
+- Improve templates and add new examples
+- Refine config scaffolding
+- Add new agent role stubs (validator, scorer, mentor, etc.)
+- Update tests for template validation
+
+**Forbidden**:
+- Treating this as canonical runtime infra (production infra lives in afi-ops)
+- Hardcoding secrets or real URLs in templates
+- Adding runtime logic that belongs in afi-core or afi-reactor
+- Breaking template contracts that other repos depend on
+
+**When unsure**: Keep templates simple and well-documented. Prefer extending existing patterns over creating new ones.
+
+---
+
+**Last Updated**: 2025-11-26  
 **Maintainers**: AFI Infra Team  
-**Version**: 1.0.0
+**Charter**: `afi-config/codex/governance/droids/AFI_DROID_CHARTER.v0.1.md`
 

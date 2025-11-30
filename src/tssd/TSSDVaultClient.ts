@@ -1,6 +1,7 @@
-// 🧩 T.S.S.D. Vault Client Interface + In-Memory Implementation
+// 🧩 T.S.S.D. Vault Client Interface + Implementations
 
 import { VaultedSignalRecord } from "./types";
+import { MongoTSSDVaultClient } from "./MongoTSSDVaultClient";
 
 /**
  * Query parameters for searching the TSSD Vault.
@@ -160,3 +161,67 @@ export class InMemoryTSSDVaultClient implements ITSSDVaultClient {
   }
 }
 
+/**
+ * Factory: create a TSSD vault client from environment configuration.
+ *
+ * - Uses MongoTSSDVaultClient when AFI_TSSD_MONGODB_URI is present.
+ * - Falls back to InMemoryTSSDVaultClient in non-production when missing.
+ * - Throws in production if no Mongo URI is configured.
+ */
+
+type LoggerLike = {
+  warn?: (...args: unknown[]) => void;
+  info?: (...args: unknown[]) => void;
+  error?: (...args: unknown[]) => void;
+};
+
+export function createTSSDVaultClientFromEnv(
+  logger: LoggerLike = {}
+): ITSSDVaultClient {
+  const explicitUri = process.env.AFI_TSSD_MONGODB_URI;
+  const legacyUri = process.env.MONGODB_URI || process.env.MONGO_URI;
+  const isProd = (process.env.NODE_ENV || "").toLowerCase() === "production";
+
+  const dbName = process.env.AFI_TSSD_DB_NAME || "afi_tssd";
+  const collectionName = process.env.AFI_TSSD_COLLECTION || "tssd_signals";
+
+  const retentionEnv = process.env.AFI_TSSD_RETENTION_DAYS;
+  const parsedRetention =
+    retentionEnv && retentionEnv.trim().length > 0
+      ? Number(retentionEnv)
+      : undefined;
+  const retentionDays = Number.isFinite(parsedRetention)
+    ? (parsedRetention as number)
+    : undefined;
+
+  if (!explicitUri && !legacyUri) {
+    if (isProd) {
+      throw new Error(
+        "[TSSD] AFI_TSSD_MONGODB_URI is required in production. Falling back to in-memory is not allowed."
+      );
+    }
+
+    logger.warn?.(
+      "[TSSD] No Mongo URI configured. Using InMemoryTSSDVaultClient (non-persistent)."
+    );
+    return new InMemoryTSSDVaultClient();
+  }
+
+  const mongoUri = explicitUri ?? legacyUri!;
+
+  if (!explicitUri && legacyUri) {
+    logger.warn?.(
+      "[TSSD] Using legacy Mongo URI env (MONGODB_URI/MONGO_URI). Prefer AFI_TSSD_MONGODB_URI."
+    );
+  }
+
+  return new MongoTSSDVaultClient({
+    mongoUri,
+    dbName,
+    collectionName,
+    retentionDays,
+    logger,
+  });
+}
+
+export { MongoTSSDVaultClient };
