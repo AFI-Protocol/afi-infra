@@ -1,7 +1,7 @@
 {
   "name": "afi-infra",
   "version": "1.0.0",
-  "description": "Infrastructure services and templates for AFI Protocol",
+  "description": "Infrastructure services, TSSD vault clients, and shared schemas for AFI Protocol",
   "type": "module",
   "scripts": {
     "test": "vitest run",

@@ -21,21 +21,6 @@ describe('[smoke] CLI Templates', () => {
   });
 });
 
-describe('[smoke] Agent Stubs', () => {
-  it('mentor_feedback_simulator imports without error', async () => {
-    // This stub has side effects (console.log), so we just verify import works
-    const module = await import('../agent-stubs/mentor_feedback_simulator.js');
-    
-    expect(module).toBeDefined();
-  });
-
-  it('variant_agent_stub imports without error', async () => {
-    const module = await import('../agent-stubs/variant_agent_stub.js');
-    
-    expect(module).toBeDefined();
-  });
-});
-
 describe('[smoke] Infrastructure Services', () => {
   it('eventsBus imports and is an EventEmitter', async () => {
     const { eventsBus } = await import('../infra/eventsBus.js');
@@ -88,24 +73,18 @@ describe('[smoke] TSSD Vault Client', () => {
 
 describe('[smoke] Schemas', () => {
   it('all schema modules import without error', async () => {
-    const schemas = [
-      '../schemas/aos_sync_loop_schema.js',
-      '../schemas/dag_pipeline_config_schema.js',
-      '../schemas/mentor_judgment_schema.js',
-      '../schemas/signal_analysis_schema.js',
-      '../schemas/signal_enrichment_schema.js',
-      '../schemas/signal_feedback_schema.js',
-      '../schemas/signal_finalization_schema.js',
-      '../schemas/signal_scoring_schema.js',
-      '../schemas/signal_transmission_schema.js',
-      '../schemas/signal_variant_schema.js',
-      '../schemas/validator_metadata_schema.js',
+    const schemaModules = [
+      "../schemas/signal_enrichment_schema.ts",
+      "../schemas/signal_analysis_schema.ts",
+      "../schemas/signal_feedback_schema.ts",
+      "../schemas/signal_finalization_schema.ts",
+      "../schemas/signal_scoring_schema.ts",
+      "../schemas/enrichment_common.ts",
     ];
 
-    for (const schemaPath of schemas) {
-      const module = await import(schemaPath);
+    for (const mod of schemaModules) {
+      const module = await import(mod);
       expect(module).toBeDefined();
     }
   });
 });
-

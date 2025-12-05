@@ -23,6 +23,7 @@
 ✅ Database schemas and migrations
 ✅ Monitoring and observability configs
 ✅ Infrastructure utilities and helpers
+✅ Core infra-level schemas and TSSD-facing types used by AFI services (e.g., signal enrichment, analysis, scoring, and vault records).
 
 ## What Does NOT Belong Here
 
@@ -33,15 +34,20 @@
 
 ## Current Stage
 
-**Phase 1 Scaffolding** - Infrastructure definitions are being established.
+**Phase 1.5 – infra scaffolding + TSSD v0:** core infra definitions, shared schemas, and TSSD vault services are being established.
 
 ## Structure
 
 ```
 afi-infra/
-├── afi-codex/          # Infrastructure codex and documentation
-├── .afi-codex.json     # Repository metadata
-└── README.md           # This file
+├── afi-codex/          # Codex JSON specs for schemas
+├── schemas/            # Zod schemas (signal enrichment, analysis, scoring, etc.)
+├── src/
+│   └── tssd/           # TSSD vault clients and types
+├── infra/              # Infra services (eventsBus, InfraConfig, ObserverDaemon)
+├── cli_templates/      # Small CLI helpers (e.g. signal_simulator)
+├── tests/              # Vitest suites, including TSSD and DAG deterministic tests
+└── README.md
 ```
 
 ## Intended Droid Work

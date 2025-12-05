@@ -1,6 +1,8 @@
 // 🧩 T.S.S.D. Vault Types
 // Canonical, auditable, training-ready memory for each AFI signal lifecycle
 
+import { EnrichmentCategory } from "../../schemas/enrichment_common";
+
 /**
  * Lifecycle stage of a signal in the AFI Protocol.
  * Represents the progression from RAW ingestion through MINTED on-chain and REPLAYED for validation.
@@ -58,6 +60,10 @@ export interface RawSignalSnapshot {
 export interface EnrichmentSnapshot {
   /** ISO timestamp when enrichment was completed */
   enrichedAt: string;
+  /** Optional enrichment categories applied */
+  categories?: EnrichmentCategory[];
+  /** Optional identifier for the enrichment agent/swarm */
+  enrichedBy?: string;
   /** Technical indicators and their values */
   indicators?: Record<string, number | string>;
   /** Detected pattern labels (e.g. "head-and-shoulders", "double-bottom") */
@@ -230,4 +236,3 @@ export interface VaultedSignalRecord {
   /** ISO timestamp when record was last updated */
   updatedAt: string;
 }
-

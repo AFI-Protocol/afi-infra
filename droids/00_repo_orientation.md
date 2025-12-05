@@ -6,23 +6,23 @@
 
 ## What This Repo Does
 
-Infrastructure-as-code and service definitions for AFI Protocol's core infrastructure components, including T.S.S.D. Vault (Time-Series Signal Database), service configurations, and infrastructure utilities.
+Infrastructure scaffolding, shared schemas, and T.S.S.D. Vault services/tests. Current center of gravity: TSSD (clients, types, deterministic tests) plus infra-level schemas and codex specs.
 
 **Key Capabilities**:
-- Infrastructure-as-Code (Terraform, CloudFormation)
-- Service definitions (Docker, K8s)
-- Database schemas and migrations
-- Monitoring and observability configs
+- Infrastructure scaffolding and shared schemas
+- TSSD vault services (clients, types, helpers) and tests
+- Infra-level codex specs and docs
+- Basic CLI helpers for infra/TSSD smoke (e.g., signal_simulator)
 
 ---
 
 ## Repo Boundaries
 
 **This repo handles**:
-- ✅ Infrastructure definitions
-- ✅ Service configurations
-- ✅ Database schemas
-- ✅ Monitoring configs
+- ✅ Infrastructure scaffolding and shared schemas
+- ✅ TSSD vault clients/types and deterministic tests
+- ✅ Infra-level codex specs and docs
+- ✅ CLI helpers used for infra/TSSD smoke testing
 
 **This repo does NOT handle**:
 - ❌ Deployment scripts (that's afi-ops)
@@ -34,17 +34,13 @@ Infrastructure-as-code and service definitions for AFI Protocol's core infrastru
 ## Key Files to Know
 
 ```
-infra/
-  [Infrastructure definitions]
-  
-schemas/
-  [Database schemas]
-  
-agent-prompts/
-  [Agent prompt templates]
-  
-agent-roles/
-  [Agent role definitions]
+afi-codex/      Codex JSON specs
+schemas/        Zod schemas (enrichment, analysis, feedback, finalization, scoring, enrichment_common)
+src/tssd/       TSSD vault clients, types, helpers
+cli_templates/  Small CLI helpers (e.g., signal_simulator)
+tests/          Vitest suites (including tests/tssd/)
+droids/         Repo-scoped droid instructions
+docs/           Infra and TSSD docs (TSSD_VAULT_SPEC, TSSD_VAULT_CONSOLIDATION_PLAN.v0.1.md)
 ```
 
 ---
@@ -100,4 +96,3 @@ See `10_common_tasks.md` for detailed workflows.
 ---
 
 **Last Updated**: 2025-11-22
-
