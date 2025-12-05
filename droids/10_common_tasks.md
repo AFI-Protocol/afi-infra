@@ -4,6 +4,21 @@ Frequent tasks with step-by-step instructions.
 
 ---
 
+## Task 0: TSSD Vault Maintenance (CURRENT)
+
+**When**: You need to maintain TSSD vault code, types, or tests in this repo.
+
+**Steps**:
+
+1. **Align types**: Update `src/tssd/types.ts` if schemas evolve. Avoid breaking changes; align with Codex and AGENTS constraints.
+2. **Adjust clients**: Tweak `InMemoryTSSDVaultClient` and `MongoTSSDVaultClient` (in `src/tssd/`) for behavior or clarity; keep deterministic behavior and existing coverage intact.
+3. **Harden tests**: Add/refine tests under `tests/tssd/` for new behaviors; run `npm test` locally.
+4. **Stay in scope**: Do NOT touch emissions/tokenomics/validator/governance. Limit changes to TSSD storage and infra-level concerns.
+
+_(The tasks below are generic/future-facing infra patterns; still valid, but the repo is currently TSSD-first.)_
+
+---
+
 ## Task 1: Add Infrastructure Definition
 
 **When**: You need to define new infrastructure component.
@@ -123,4 +138,3 @@ If stuck on any task:
 ---
 
 **Last Updated**: 2025-11-22
-

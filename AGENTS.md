@@ -49,10 +49,13 @@ This repo has no dev server. Typical workflow:
 **Purpose**: Provide reusable infrastructure patterns, agent stubs, and config scaffolding. **Not** for production runtime.
 
 **Key directories**:
-- `templates/` — Infrastructure templates (agent configs, signal templates)
-- `stubs/` — Agent role stubs (validator, scorer, mentor)
-- `schemas/` — Schema scaffolding and examples
-- `tests/` — Smoke tests and DAG deterministic tests
+- `afi-codex/` – Codex JSON specs for infra-facing schemas and contracts
+- `schemas/` – Zod schemas for signal enrichment/analysis/feedback/finalization/scoring and enrichment_common
+- `src/tssd/` – TSSD vault clients, types, and helpers
+- `cli_templates/` – Small CLI-oriented helpers (e.g. signal_simulator)
+- `tests/` – Vitest suites for infra and TSSD (including tests/tssd/)
+- `droids/` – Repo-scoped droid instructions and safety rails
+- `docs/` – Infra and TSSD docs (e.g., TSSD_VAULT_SPEC, TSSD_VAULT_CONSOLIDATION_PLAN.v0.1.md)
 
 **Consumed by**: afi-reactor, afi-core, afi-ops, afi-factory  
 **Depends on**: afi-config (schemas)

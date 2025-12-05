@@ -22,14 +22,10 @@
     "schemas/**/*",
     "infra/**/*",
     "cli_templates/**/*",
-    "agent-stubs/**/*",
     "tests/**/*"
   ],
   "exclude": [
     "node_modules",
-    "dist",
-    "schemas/aos_sync_loop_schema.test.ts",
-    "schemas/signal_finalization_schema.test.ts"
+    "dist"
   ]
 }
-

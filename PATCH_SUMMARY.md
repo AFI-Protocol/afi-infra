@@ -1,3 +1,5 @@
+NOTE (2025-11-xx): Some details below (agent-stub coverage, schema file counts) have been superseded by later patches. For the current state of tests and schemas, see the latest tests/README.md and npm test output.
+
 # AFI Infra Test Layer - Patch Summary
 
 **Date**: 2025-11-22  
@@ -168,4 +170,3 @@ npm run test:watch
 
 **Maintainers**: AFI Infra Team  
 **Review Status**: Ready for merge
-

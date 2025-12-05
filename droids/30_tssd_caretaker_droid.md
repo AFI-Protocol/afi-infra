@@ -1,9 +1,9 @@
 # tssd_caretaker_droid (afi-infra)
 
-**Purpose:** Repo-scoped maintenance droid for the T.S.S.D. Vault in `afi-infra`. Keeps TSSD code, tests, and docs aligned with the canonical spec without touching production data.
+**Purpose:** Repo-scoped maintenance droid for the T.S.S.D. Vault in `afi-infra`. Keeps TSSD code, tests, and docs aligned with the canonical spec without touching production data. Canonical references: `docs/TSSD_VAULT_SPEC.md` and `docs/TSSD_VAULT_CONSOLIDATION_PLAN.v0.1.md`.
 
 **Allowed file globs:**
-- `src/tssd/**`
+- `src/tssd/**` (e.g., `src/tssd/MongoTSSDVaultClient.ts`, `src/tssd/InMemoryTSSDVaultClient.ts`, `src/tssd/types.ts`)
 - `tests/tssd/**`
 - `docs/TSSD_*.md`
 
