@@ -91,6 +91,7 @@ const enrichNode: DAGNode = (record) => {
 const scoreNode: DAGNode = (record) => {
   const tags = record.publicSurface.tags || [];
   const baseScore = tags.includes('crypto') ? 85 : 50;
+  const uwrScore = baseScore / 100; // Normalize to 0-1
 
   return {
     ...record,
@@ -98,8 +99,28 @@ const scoreNode: DAGNode = (record) => {
       ...record.stages,
       scored: {
         scoredAt: '2025-01-01T00:00:02.000Z', // Fixed timestamp
-        baseScore,
-        confidence: 0.8,
+        analystScore: {
+          analystId: 'test-analyst',
+          strategyId: 'test-strategy',
+          strategyVersion: '1.0.0',
+          marketType: 'spot',
+          assetClass: 'crypto',
+          instrumentType: 'spot',
+          baseAsset: 'BTC',
+          quoteAsset: 'USD',
+          signalTimeframe: '1h',
+          holdingHorizon: 'swing',
+          direction: 'long',
+          riskBucket: 'medium',
+          conviction: 0.8,
+          uwrAxes: {
+            structure: 0.8,
+            execution: 0.8,
+            risk: 0.8,
+            insight: 0.8,
+          },
+          uwrScore,
+        },
       },
     },
   };
@@ -144,7 +165,7 @@ describe('[DAG] Deterministic Pipeline', () => {
     expect(run1.stages.raw).toBeDefined();
     expect(run1.stages.enriched).toBeDefined();
     expect(run1.stages.scored).toBeDefined();
-    expect(run1.stages.scored?.baseScore).toBe(85); // crypto tag → score 85
+    expect(run1.stages.scored?.analystScore.uwrScore).toBe(0.85); // crypto tag → score 85 → normalized to 0.85
     expect(run1.publicSurface.tags).toEqual(['crypto', 'bitcoin']);
   });
 
@@ -187,7 +208,7 @@ describe('[DAG] Deterministic Pipeline', () => {
     expect(retrieved?.stages.raw).toBeDefined();
     expect(retrieved?.stages.enriched).toBeDefined();
     expect(retrieved?.stages.scored).toBeDefined();
-    expect(retrieved?.stages.scored?.baseScore).toBe(50); // no crypto tag → score 50
+    expect(retrieved?.stages.scored?.analystScore.uwrScore).toBe(0.5); // no crypto tag → score 50 → normalized to 0.5
     expect(retrieved?.publicSurface.tags).toEqual(['general']);
   });
 });

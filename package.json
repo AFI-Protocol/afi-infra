@@ -23,6 +23,7 @@
     "vitest": "^1.0.0"
   },
   "dependencies": {
+    "afi-core": "file:../afi-core",
     "mongodb": "^7.0.0",
     "zod": "^3.22.0"
   }

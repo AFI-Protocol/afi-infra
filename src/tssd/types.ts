@@ -1,7 +1,7 @@
 // 🧩 T.S.S.D. Vault Types
 // Canonical, auditable, training-ready memory for each AFI signal lifecycle
 
-import { EnrichmentCategory } from "../../schemas/enrichment_common";
+import { EnrichmentCategory } from "../../schemas/enrichment_common.js";
 
 /**
  * Lifecycle stage of a signal in the AFI Protocol.
@@ -90,27 +90,94 @@ export interface AnalysisSnapshot {
 }
 
 /**
- * SCORED stage snapshot: quantitative scoring with confidence and decay parameters.
- * Provides the numeric assessment used for emissions and ranking.
+ * Analyst Score Snapshot
+ *
+ * This interface mirrors AnalystScoreTemplate from afi-core/src/analyst/AnalystScoreTemplate.ts
+ * and provides a compatible structure for storing analyst scoring data in TSSD vault records.
+ *
+ * The canonical source of truth for this structure is AnalystScoreTemplate in afi-core.
+ * This interface is kept in sync with that template to ensure compatibility.
+ *
+ * Note: This is a storage/snapshot type. The full AnalystScoreTemplate may have additional
+ * optional fields that are not required for vault persistence.
+ */
+export interface AnalystScoreSnapshot {
+  /** Analyst identifier (e.g. "froggy", "alpha") */
+  analystId: string;
+
+  /** Strategy identifier (e.g. "trend_pullback_v1") */
+  strategyId: string;
+
+  /** Optional strategy version */
+  strategyVersion?: string;
+
+  /** Market type (e.g. "spot", "perp", "futures") */
+  marketType: string;
+
+  /** Asset class (e.g. "crypto", "forex", "equities") */
+  assetClass: string;
+
+  /** Instrument type (e.g. "spot", "linear-perp", "inverse-perp") */
+  instrumentType: string;
+
+  /** Base asset (e.g. "BTC", "ETH") */
+  baseAsset: string;
+
+  /** Quote asset (e.g. "USD", "USDT") */
+  quoteAsset: string;
+
+  /** Signal timeframe (e.g. "1m", "1h", "1d") */
+  signalTimeframe: string;
+
+  /** Holding horizon (e.g. "scalp", "swing", "position") */
+  holdingHorizon: string;
+
+  /** Trade direction */
+  direction: "long" | "short" | "neutral";
+
+  /** Risk bucket classification */
+  riskBucket: "low" | "medium" | "high";
+
+  /** Conviction level (0..1) */
+  conviction: number;
+
+  /** UWR (Universal Weighting Rule) axes */
+  uwrAxes: {
+    structure: number;
+    execution: number;
+    risk: number;
+    insight: number;
+  };
+
+  /** UWR score (weighted average of axes) */
+  uwrScore: number;
+
+  /** Optional narrative fields */
+  rationale?: string;
+  caveats?: string;
+  tags?: string[];
+}
+
+/**
+ * Per-signal scoring snapshot stored in the TSSD vault.
+ *
+ * - analystScore is the canonical per-signal score (AnalystScoreSnapshot).
+ * - PoI / PoInsight are NOT stored here; they live in agent/validator registries.
  */
 export interface ScoreSnapshot {
   /** ISO timestamp when scoring was completed */
   scoredAt: string;
-  /** Core numeric score */
-  baseScore: number;
-  /** Confidence level (0..1 normalized) */
-  confidence: number;
+
+  /** Canonical analyst score (single source of truth) */
+  analystScore: AnalystScoreSnapshot;
+
   /** Optional decay parameters for time-based score adjustment */
   decayParams?: {
     /** Half-life in minutes for score decay */
     halfLifeMinutes?: number;
     /** Reference to AFI's Greeks-based decay template */
     greeksTemplateId?: string;
-  };
-  /** Optional Proof of Intelligence tier of scoring agent */
-  poiLevel?: string;
-  /** Optional Proof of Insight tier of scoring agent */
-  poInsightLevel?: string;
+  } | null;
 }
 
 /**
