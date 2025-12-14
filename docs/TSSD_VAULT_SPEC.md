@@ -16,7 +16,7 @@ Each lifecycle stage captures a distinct transformation of the signal:
 - **RAW**: Initial ingestion from external sources (webhooks, feeds, internal models)
 - **ENRICHED**: Augmented with technical indicators, patterns, sentiment, and contextual data
 - **ANALYZED**: High-level narrative, regime classification, and risk assessment
-- **SCORED**: Quantitative assessment with confidence, decay parameters, and PoI/PoInsight metadata
+- **SCORED**: Quantitative assessment with analyst score template (UWR axes, conviction, market context)
 - **MINTED**: On-chain receipt with transaction hash, token address, and chain ID
 - **REPLAYED**: Post-signal outcome evaluation for performance tracking and validator consensus
 
@@ -82,10 +82,12 @@ The Vault includes `training` flags to guide whether and how records are used fo
 
 Validators and researchers can use `VaultedSignalRecord` for:
 
-- **Supervised Learning**: Train models to predict `baseScore`, `confidence`, or `realizedPnlPct` from enriched features
+- **Supervised Learning**: Train models to predict `uwrScore`, `conviction`, or `realizedPnlPct` from enriched features
 - **Reinforcement Learning**: Train agent policies based on signal outcomes and reward functions
 - **Meta-Analysis**: Study which strategies, regimes, or markets perform best over time
-- **Ensemble Methods**: Combine signals from multiple analysts with different PoI/PoInsight levels
+- **Ensemble Methods**: Combine signals from multiple analysts with different scoring approaches
+
+**Note**: PoI (Proof of Intelligence) and PoInsight (Proof of Insight) are validator/agent-level traits tracked in benchkit and validator registries, NOT per-signal fields in TSSD records. The analyst score template captures per-signal scoring data (UWR axes, conviction, market context).
 
 The `listForTraining()` method in `ITSSDVaultClient` automatically filters out signals where `includeForModel` is false, respecting analyst preferences.
 

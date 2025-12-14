@@ -18,8 +18,28 @@ describe("TSSDReplayRunner", () => {
       stages: {
         scored: {
           scoredAt: now,
-          baseScore: 0.8,
-          confidence: 0.9,
+          analystScore: {
+            analystId: 'test-analyst',
+            strategyId: 'test-strategy',
+            strategyVersion: '1.0.0',
+            marketType: 'spot',
+            assetClass: 'crypto',
+            instrumentType: 'spot',
+            baseAsset: 'BTC',
+            quoteAsset: 'USDT',
+            signalTimeframe: '1h',
+            holdingHorizon: 'swing',
+            direction: 'long',
+            riskBucket: 'medium',
+            conviction: 0.9,
+            uwrAxes: {
+              structure: 0.8,
+              execution: 0.8,
+              risk: 0.8,
+              insight: 0.8,
+            },
+            uwrScore: 0.8,
+          },
         },
       },
       publicSurface: {
