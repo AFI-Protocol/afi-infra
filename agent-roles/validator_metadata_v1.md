@@ -6,7 +6,7 @@ Validator metadata is the compact profile for a validator agent in AFI. It captu
 Validator metadata is intentionally small and declarative. It is meant to be stable enough for registry views, dashboards, and selection logic while leaving heavy-duty performance analysis to the vault and replay systems. It should make it obvious which validators are active, what they focus on, and which scores (e.g., PoI) describe their capability—not alter how signals are scored.
 
 2. How it’s used in the protocol
-Validator metadata informs eligibility, selection, and monitoring. Registries and coordination layers read it to decide which validators are available for certain markets or strategies. Reputation-aware flows can reference these fields to weight or filter validators, but reputation and PoI/PoInsight never override UWR or vault finality. PoI (Proof-of-Intelligence) and PoInsight (Proof-of-Insight) live at the validator level; they describe capability and historical insight quality, not individual signal scores. Metadata keeps a high-level view of validator competence and activity so selectors and dashboards can reason about the validator set without touching per-signal data.
+Validator metadata informs eligibility, selection, and monitoring. Registries and coordination layers read it to decide which validators are available for certain markets or strategies. Reputation-aware flows can reference these fields to weight or filter validators, but reputation and PoI/PoInsight never override UWR or vault finality. PoI (Proof-of-Intelligence) and PoInsight (Proof-of-Insight) are analyst-level reputation metrics computed by validators over time; they describe analyst capability and historical insight quality, not individual signal scores. Metadata keeps a high-level view of validator competence and activity so selectors and dashboards can reason about the validator set without touching per-signal data.
 
 3. Field-by-field overview
 Canonical v1 fields (match the TypeScript schema):
@@ -16,8 +16,8 @@ Canonical v1 fields (match the TypeScript schema):
 - domainsCovered: String array of domains the validator can handle (e.g., futures, macro, onchain). Drives eligibility and routing.
 - supportedStrategies: String array of strategy families the validator supports. Helps task/strategy matching.
 - supportedMarkets: String array of markets/instruments the validator covers. Prevents misrouting to irrelevant venues.
-- po_i_score: Proof-of-Intelligence (PoI) score (0–1). Describes validator capability/domain fluency. Validator-level only; does not touch UWR or per-signal scoring.
-- poiScore: Proof-of-Insight (PoInsight) score (0–1). Describes long-run insight/alpha quality. Validator-level only; does not touch UWR or per-signal scoring.
+- po_i_score: Proof-of-Intelligence (PoI) score (0–1). Describes validator capability in computing analyst reputation. Analyst-level metric; does not touch UWR or per-signal scoring.
+- poiScore: Proof-of-Insight (PoInsight) score (0–1). Describes long-run analyst insight/alpha quality. Analyst-level metric; does not touch UWR or per-signal scoring.
 - epochsActive: Number of epochs in which this validator has participated. Indicates tenure/availability.
 - mintedAFI: Aggregate AFI minted while this validator participated. Informational, not a control surface.
 - isActive: Boolean flag indicating whether the validator is currently active/eligible in rotations.
