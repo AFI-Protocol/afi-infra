@@ -72,7 +72,7 @@ This repo has no dev server. Typical workflow:
 
 ## Git Workflows
 
-- **Base branch**: `main` or `migration/multi-repo-reorg`
+- **Base branch**: `main`
 - **Branch naming**: `feat/`, `fix/`, `docs/`
 - **Commit messages**: Conventional commits (e.g., `feat(templates): add mentor agent stub`)
 - **Before committing**: Run `npm test` (smoke + DAG tests)
