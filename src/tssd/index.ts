@@ -2,4 +2,5 @@
 
 export * from "./types";
 export * from "./TSSDVaultClient";
+export * from "./TenantScopedTSSDVaultClient";
 

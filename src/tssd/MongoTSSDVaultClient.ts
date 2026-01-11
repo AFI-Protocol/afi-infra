@@ -255,6 +255,12 @@ export class MongoTSSDVaultClient implements ITSSDVaultClient {
 
     await this.collection.createIndex({ createdAt: -1 }, { name: "createdAt_idx" });
 
+    // Tenant-scoped time-series access pattern: analystId + recency
+    await this.collection.createIndex(
+      { "identity.analystId": 1, createdAt: -1 },
+      { name: "identity_analystId_createdAt_idx" }
+    );
+
     if (this.retentionDays && Number.isFinite(this.retentionDays) && this.retentionDays > 0) {
       const seconds = this.retentionDays * 24 * 60 * 60;
       await this.collection.createIndex(
