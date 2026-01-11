@@ -1,6 +1,6 @@
 // 🧩 T.S.S.D. Vault - Public Exports
 
-export * from "./types";
-export * from "./TSSDVaultClient";
-export * from "./TenantScopedTSSDVaultClient";
+export * from "./types.js";
+export * from "./TSSDVaultClient.js";
+export * from "./TenantScopedTSSDVaultClient.js";
 

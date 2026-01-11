@@ -1,7 +1,7 @@
 // 🧩 T.S.S.D. Vault Client Interface + Implementations
 
-import { VaultedSignalRecord } from "./types";
-import { MongoTSSDVaultClient } from "./MongoTSSDVaultClient";
+import { VaultedSignalRecord } from "./types.js";
+import { MongoTSSDVaultClient } from "./MongoTSSDVaultClient.js";
 
 /**
  * Query parameters for searching the TSSD Vault.

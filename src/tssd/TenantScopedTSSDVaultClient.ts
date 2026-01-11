@@ -1,6 +1,6 @@
-import type { ITSSDVaultClient, TSSDVaultQuery } from "./TSSDVaultClient";
-import type { VaultedSignalRecord } from "./types";
-import { MongoTSSDVaultClient, type MongoTSSDVaultClientConfig } from "./MongoTSSDVaultClient";
+import type { ITSSDVaultClient, TSSDVaultQuery } from "./TSSDVaultClient.js";
+import type { VaultedSignalRecord } from "./types.js";
+import { MongoTSSDVaultClient, type MongoTSSDVaultClientConfig } from "./MongoTSSDVaultClient.js";
 
 export interface TenantScopedVaultOptions extends MongoTSSDVaultClientConfig {
   /** Tenant/analyst identifier used to scope all operations */

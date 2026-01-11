@@ -1,8 +1,8 @@
 // 🧩 T.S.S.D. Vault - MongoDB Implementation (Time-Series)
 // Minimal v0 client using MongoDB native time-series collections.
 
-import type { ITSSDVaultClient, TSSDVaultQuery } from "./TSSDVaultClient";
-import type { VaultedSignalRecord } from "./types";
+import type { ITSSDVaultClient, TSSDVaultQuery } from "./TSSDVaultClient.js";
+import type { VaultedSignalRecord } from "./types.js";
 
 type MongoClientLike = {
   connect(): Promise<void>;
