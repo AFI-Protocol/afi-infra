@@ -18,6 +18,5 @@
   "related_schemas": [],
   "schema_path": "schemas/validator_metadata_schema.ts",
   "test_path": null,
-  "agent_prompt_path": "agent-prompts/agent-prompt.md",
-  "agent_role_path": "agent-roles/agent-job-description.md"
+  "agent_role_path": "agent-roles/validator_metadata_tracker_agent.md"
 }

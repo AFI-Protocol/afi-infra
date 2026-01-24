@@ -59,32 +59,28 @@
       ]
     },
     {
-      "module": "afi-infra/agent-templates",
+      "module": "afi-infra/agent-roles",
       "role": "agent_scaffolding",
-      "description": "Agent role definitions, prompts, and job descriptions for AFI agents",
+      "description": "Agent role definitions for AFI agents",
       "paths": [
-        "agent-prompts/",
-        "agent-roles/",
-        "agent-stubs/"
+        "agent-roles/"
       ]
     }
   ],
   "trackedBy": [
-    "Scarlet",
-    "augmentcode",
+    "AFI Team",
     "factory.droid"
   ],
   "agentReady": true,
   "features": {
     "tssdVault": true,
     "signalSchemas": true,
-    "agentTemplates": true,
-    "infraServices": true
+    "agentRoles": true
   },
   "healthStatus": {
     "tssdVaultImplementation": "in-memory",
     "schemasActive": true,
-    "agentTemplatesReady": true,
+    "agentRolesReady": true,
     "lastHealthCheck": "2025-11-18T00:00:00Z"
   }
 }

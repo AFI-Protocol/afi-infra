@@ -43,9 +43,10 @@ afi-infra/
 ├── afi-codex/          # Codex JSON specs for schemas
 ├── schemas/            # Zod schemas (signal enrichment, analysis, scoring, etc.)
 ├── src/
-│   └── tssd/           # TSSD vault clients and types
-├── infra/              # Infra services (eventsBus, InfraConfig, ObserverDaemon)
-├── cli_templates/      # Small CLI helpers (e.g. signal_simulator)
+│   └── tssd/           # TSSD vault clients and types (canonical)
+├── agent-roles/        # Agent role definitions
+├── docs/               # TSSD specs and documentation
+├── droids/             # Droid configuration files
 ├── tests/              # Vitest suites, including TSSD and DAG deterministic tests
 └── README.md
 ```

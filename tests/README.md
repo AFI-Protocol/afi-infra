@@ -6,13 +6,10 @@ Minimal, droid-friendly test layer for afi-infra.
 
 ### Smoke Tests (`smoke.cli.test.ts`)
 
-Quick "does it run" checks for all primary CLI/entrypoints:
+Quick "does it run" checks for primary modules:
 
-- **CLI Templates**: `signal_simulator`
-- **Agent Stubs**: `mentor_feedback_simulator`, `variant_agent_stub`
-- **Infrastructure Services**: `eventsBus`, `infra.config`, `observerDaemon`
 - **TSSD Vault Client**: `InMemoryTSSDVaultClient`, types
-- **Schemas**: All 11 schema modules
+- **Schemas**: All schema modules
 
 **Purpose**: Verify entrypoints can be imported and executed without throwing.  
 **Constraints**: NO network calls, NO real DB access, NO heavy business logic.
@@ -69,31 +66,6 @@ Tests run automatically on all PRs via `.github/workflows/validate-infra.yml`:
 **Merge is blocked if any test fails.**
 
 ## Adding New Tests
-
-### For New CLI/Entrypoints
-
-Add to `smoke.cli.test.ts`:
-
-```typescript
-it('my_new_cli imports and executes without error', async () => {
-  const { myFunction } = await import('../cli_templates/my_new_cli.js');
-  
-  expect(myFunction).toBeDefined();
-  expect(() => myFunction()).not.toThrow();
-});
-```
-
-### For New Infrastructure Services
-
-Add to `smoke.cli.test.ts` under "Infrastructure Services":
-
-```typescript
-it('myService imports without error', async () => {
-  const module = await import('../infra/myService.js');
-  
-  expect(module).toBeDefined();
-});
-```
 
 ### For DAG/Pipeline Logic
 
