@@ -14,7 +14,7 @@ export enum EnrichmentCategory {
 export const EnrichmentCategorySchema = z.nativeEnum(EnrichmentCategory);
 
 /**
- * Core enrichment payload shape that enrichment agents (e.g., Engineer/Pixel Rick)
+ * Core enrichment payload shape that enrichment agents (e.g., the enrichment designer)
  * and downstream analysts can rely on.
  *
  * Notes:
