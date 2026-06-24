@@ -1,5 +1,7 @@
 # T.S.S.D. Vault Specification
 
+> **AFI Settlement v1 note:** Parts of this document reference the **v0** per-signal mint / ERC-1155 receipt / direct-beneficiary path, which is **superseded as mainnet architecture** by AFI Settlement v1 — rewards settle **by epoch** through a RewardsVault / Merkle-claim layer funded from an EpochSettlementManifest, strategy/epoch receipts use **ERC-6909** (not ERC-1155), provenance is separated from payout, and ENS names are aliases (concrete addresses + chainId are the source of truth). See `afi-docs/specs/AFI_SETTLEMENT_V1_DOCTRINE.md` for the canonical architecture.
+
 ## Purpose
 
 The **T.S.S.D. Vault** (Time-Series Signal Data Vault) is the canonical, auditable record of each signal's end-to-end lifecycle within the AFI Protocol. It serves as:
