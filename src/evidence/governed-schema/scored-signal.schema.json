@@ -1,0 +1,112 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://afi-protocol.org/schemas/provenance/v1/scored-signal.schema.json",
+  "title": "AFI ScoredSignal v1 Projection (District 2 M1 DRAFT)",
+  "description": "DRAFT / NON-IMPLEMENTATION thin canonical projection of a scored signal — deliberately NOT the full runtime ReactorScoredSignal. It carries identity, direction/risk/conviction, UWR score surface, and provenance links only. It structurally EXCLUDES runtime/storage baggage: no rawUss, no lenses[], no _priceFeedMetadata, no rawPayload, no debug fields, no MongoDB/storage fields, and no volatile processing timestamps (additionalProperties:false).",
+  "$comment": "Timestamp policy (District 2 hash doctrine): volatile processing timestamps (scoredAt, createdAt, updatedAt, storedAt, processedAt, ingestedAt) are storage/runtime metadata — they are NOT canonical hash material by default and are NOT representable in this projection. The only canonical time field is the optional, domain-declared evaluatedAt, admissible only when supplied as deterministic/domain evidence.",
+  "x-afiStatus": "draft-non-implementation",
+  "x-afiPartOf": "AFI District 2 — Canonical Data & Provenance Boundary (D2 M1)",
+  "x-afiDoctrineRefs": [
+    "District 2 D-17 decision — authorizes D2 M1 only (afi-config schema drafts and tests)",
+    "District 2 hash doctrine — volatile processing timestamps are not canonical hash material; normalized evidence/domain timestamps are"
+  ],
+  "x-afiOpenItems": {
+    "SS-O1": "riskBucket taxonomy — OPEN (scoring-doctrine-owned); free-form non-empty string in this draft.",
+    "SS-O2": "uwrScore range/normalization policy — OPEN (scoring-doctrine-owned); unconstrained number in this draft.",
+    "SS-O3": "uwrAxes axis-name registry — OPEN; free-form axis→number map in this draft."
+  },
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "signalId",
+    "analystId",
+    "strategyId",
+    "direction",
+    "uwrScore"
+  ],
+  "anyOf": [
+    { "required": ["provenanceRecordRef"] },
+    { "required": ["provenanceRecordHash"] }
+  ],
+  "properties": {
+    "schema": {
+      "type": "string",
+      "const": "afi.scored-signal.v1",
+      "description": "Schema version identifier for the ScoredSignal v1 projection."
+    },
+    "signalId": {
+      "type": "string",
+      "description": "Stable unique identifier of the scored signal (same id space as USS provenance.signalId).",
+      "minLength": 1
+    },
+    "providerId": {
+      "type": "string",
+      "description": "OPTIONAL stable identifier of the originating signal provider.",
+      "minLength": 1
+    },
+    "providerRef": {
+      "type": "string",
+      "description": "OPTIONAL free-form provider reference (handle, account ref), where appropriate.",
+      "minLength": 1
+    },
+    "analystId": {
+      "type": "string",
+      "description": "Identifier of the analyst that scored the signal.",
+      "minLength": 1
+    },
+    "strategyId": {
+      "type": "string",
+      "description": "Identifier of the strategy under which the signal was scored.",
+      "minLength": 1
+    },
+    "strategyVersion": {
+      "type": "string",
+      "description": "OPTIONAL version of the strategy definition used for scoring.",
+      "minLength": 1
+    },
+    "direction": {
+      "type": "string",
+      "description": "Signal direction (aligned with USS v1.1 facts.direction).",
+      "enum": ["long", "short", "neutral"]
+    },
+    "riskBucket": {
+      "type": "string",
+      "description": "Risk bucket label for the scored signal. Bucket taxonomy is scoring-doctrine-owned and deliberately OPEN in this draft (SS-O1).",
+      "minLength": 1
+    },
+    "conviction": {
+      "type": "number",
+      "description": "Analyst conviction in the signal, normalized to [0, 1].",
+      "minimum": 0,
+      "maximum": 1
+    },
+    "uwrScore": {
+      "type": "number",
+      "description": "Aggregate UWR score for the signal. Range/normalization policy is scoring-doctrine-owned and deliberately OPEN in this draft (SS-O2)."
+    },
+    "uwrAxes": {
+      "type": "object",
+      "description": "Per-axis UWR score components as an axis-name → numeric-score map.",
+      "additionalProperties": { "type": "number" }
+    },
+    "evaluatedAt": {
+      "type": "string",
+      "format": "date-time",
+      "description": "OPTIONAL domain-declared normalized evaluation time. Included ONLY when supplied as deterministic/domain evidence (e.g. derived from an evidence asOf or candle close) — NEVER generated from wall-clock runtime. Volatile processing timestamps (scoredAt etc.) are storage metadata and are not representable here."
+    },
+    "provenanceRecordRef": {
+      "type": "string",
+      "description": "Reference to the ProvenanceRecord v1 backing this scored signal. At least one of provenanceRecordRef or provenanceRecordHash is required.",
+      "minLength": 1
+    },
+    "provenanceRecordHash": {
+      "$ref": "canonical-hash.schema.json",
+      "description": "CanonicalHash v1 link to the ProvenanceRecord v1 backing this scored signal. At least one of provenanceRecordRef or provenanceRecordHash is required."
+    },
+    "outputHash": {
+      "$ref": "canonical-hash.schema.json",
+      "description": "OPTIONAL CanonicalHash v1 of this projection's canonical serialization (scored-output domain)."
+    }
+  }
+}

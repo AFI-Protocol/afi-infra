@@ -1,7 +1,7 @@
 import { describe, it, expect, afterAll } from "vitest";
 import { MongoScoredSignalEvidenceStore } from "../../src/evidence/MongoScoredSignalEvidenceStore.js";
 import { EvidenceIdempotencyConflictError } from "../../src/evidence/types.js";
-import { validMinimalScored, deepClone } from "./fixtures.js";
+import { validBase, deepClone } from "./fixtures.js";
 
 // Opt-in real-MongoDB smoke (mirrors tests/tssd convention): runs ONLY when a
 // live URI is provided. Proves the real unique `signalId` index enforces
@@ -26,7 +26,7 @@ const hasMongo = Boolean(mongoUri);
     });
 
     it("insert → read → idempotent re-submit → conflicting submit rejected", async () => {
-      const rec = validMinimalScored();
+      const rec = validBase();
       rec.signalId = `evi-smoke-${Date.now()}`;
       rec.scoredSignal.signalId = rec.signalId;
       rec.provenanceRecord.signalId = rec.signalId;

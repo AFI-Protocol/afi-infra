@@ -1,11 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { FakeDb } from "./fakeMongo.js";
-import {
-  canonicalExample,
-  validMinimalScored,
-  invalidVector,
-  deepClone,
-} from "./fixtures.js";
+import { validBase, finalizedBase, deepClone } from "./fixtures.js";
 import { MongoScoredSignalEvidenceStore } from "../../src/evidence/MongoScoredSignalEvidenceStore.js";
 import {
   EvidenceValidationError,
@@ -38,11 +33,33 @@ function makeStore() {
   return { db, store };
 }
 
+/* eslint-disable @typescript-eslint/no-explicit-any */
+type Mutate = (r: any) => void;
+
+// Mutations of the vendored governed base record that make it SCHEMA-invalid.
+const SCHEMA_INVALID: Array<[string, Mutate]> = [
+  ["missing strategyVersion", (r) => { delete r.strategyVersion; }],
+  ["heavy ReactorScoredSignalDocument carrier", (r) => { r.scoredSignal.rawUss = { schema: "afi.usignal.v1.1" }; }],
+  ["pre-scoring lifecycleState", (r) => { r.lifecycleState = "INGESTED"; r.finalized = false; }],
+  ["legacy vocabulary state", (r) => { r.lifecycleState = "minted"; }],
+  ["finality marker mismatch", (r) => { r.lifecycleState = "FINALIZED"; r.finalized = false; }],
+  ["volatile storage timestamp", (r) => { r.storedAt = "2026-01-15T12:00:07Z"; }],
+  ["VaultedSignalRecord brain field", (r) => { r.validator = { verdict: "approve" }; }],
+];
+
+// Mutations that keep the record SCHEMA-valid but break identifier continuity.
+const CONTINUITY_INVALID: Array<[string, Mutate]> = [
+  ["signalId != scoredSignal.signalId", (r) => { r.scoredSignal.signalId = `${r.signalId}-x`; }],
+  ["signalId != provenanceRecord.signalId", (r) => { r.provenanceRecord.signalId = `${r.signalId}-x`; }],
+  ["strategyId != scoredSignal.strategyId", (r) => { r.scoredSignal.strategyId = "other_strategy_v1"; }],
+  ["canonicalizationVersion != provenanceRecord's", (r) => { r.canonicalizationVersion = "afi.hash.v2"; }],
+];
+
 describe("MongoScoredSignalEvidenceStore (MONGO-STORE / Slot 2)", () => {
   describe("submit — first write, validation, continuity", () => {
     it("inserts a valid record and reads it back by signalId", async () => {
       const { store } = makeStore();
-      const rec = validMinimalScored();
+      const rec = validBase();
 
       const res = await store.submit(rec);
       expect(res.outcome).toBe("inserted");
@@ -50,20 +67,17 @@ describe("MongoScoredSignalEvidenceStore (MONGO-STORE / Slot 2)", () => {
       expect(res.recordVersion).toBe(1);
 
       const fetched = await store.getBySignalId(rec.signalId);
-      expect(fetched).toBeTruthy();
       expect(fetched?.signalId).toBe(rec.signalId);
-      expect((fetched as ScoredSignalEvidenceRecord).lifecycleState).toBe("SCORED");
-      // Storage `_id` is not leaked back into the canonical record.
-      expect("_id" in (fetched as object)).toBe(false);
+      expect(fetched?.lifecycleState).toBe("SCORED");
+      expect("_id" in (fetched as object)).toBe(false); // storage _id not leaked
     });
 
     it("returns a minimum replay bundle (projection + provenance digests)", async () => {
       const { store } = makeStore();
-      const rec = validMinimalScored();
+      const rec = validBase();
       await store.submit(rec);
 
       const bundle = await store.getReplayBundle(rec.signalId);
-      expect(bundle).toBeTruthy();
       expect(bundle?.signalId).toBe(rec.signalId);
       expect(bundle?.canonicalizationVersion).toBe(rec.canonicalizationVersion);
       expect(bundle?.scoredSignal.schema).toBe("afi.scored-signal.v1");
@@ -72,36 +86,23 @@ describe("MongoScoredSignalEvidenceStore (MONGO-STORE / Slot 2)", () => {
       expect(bundle?.provenanceRecord.outputHash).toBeTruthy();
     });
 
-    it("rejects a schema-invalid record with a typed EvidenceValidationError", async () => {
+    it("rejects schema-invalid records with a typed EvidenceValidationError", async () => {
       const { store } = makeStore();
-      for (const name of [
-        "missing-strategy-version.json",
-        "heavy-carrier-substitution.json",
-        "pre-scoring-lifecycle-state.json",
-        "legacy-vocabulary-state.json",
-        "finality-marker-mismatch.json",
-        "volatile-timestamp.json",
-        "vaulted-lifecycle-brain.json",
-      ]) {
-        const bad = invalidVector(name) as ScoredSignalEvidenceRecord;
-        await expect(store.submit(bad), name).rejects.toBeInstanceOf(EvidenceValidationError);
-        await expect(store.submit(bad), name).rejects.toMatchObject({ code: "SCHEMA_VALIDATION" });
+      for (const [label, mutate] of SCHEMA_INVALID) {
+        const bad = validBase();
+        mutate(bad);
+        await expect(store.submit(bad), label).rejects.toBeInstanceOf(EvidenceValidationError);
+        await expect(store.submit(bad), label).rejects.toMatchObject({ code: "SCHEMA_VALIDATION" });
       }
     });
 
-    it("rejects an identifier-continuity violation with a typed EvidenceContinuityError", async () => {
+    it("rejects identifier-continuity violations with a typed EvidenceContinuityError", async () => {
       const { store } = makeStore();
-      for (const name of [
-        "signalid-discontinuity.json",
-        "provenance-signalid-discontinuity.json",
-        "strategy-triple-mismatch.json",
-        "canonicalization-version-mismatch.json",
-      ]) {
-        const bad = invalidVector(name) as ScoredSignalEvidenceRecord;
-        await expect(store.submit(bad), name).rejects.toBeInstanceOf(EvidenceContinuityError);
-        await expect(store.submit(bad), name).rejects.toMatchObject({
-          code: "IDENTIFIER_CONTINUITY",
-        });
+      for (const [label, mutate] of CONTINUITY_INVALID) {
+        const bad = validBase();
+        mutate(bad);
+        await expect(store.submit(bad), label).rejects.toBeInstanceOf(EvidenceContinuityError);
+        await expect(store.submit(bad), label).rejects.toMatchObject({ code: "IDENTIFIER_CONTINUITY" });
       }
     });
   });
@@ -109,7 +110,7 @@ describe("MongoScoredSignalEvidenceStore (MONGO-STORE / Slot 2)", () => {
   describe("idempotency & append-once (D-MONGO-5/6)", () => {
     it("treats a byte-identical re-submission as idempotent (no duplicate record)", async () => {
       const { db, store } = makeStore();
-      const rec = validMinimalScored();
+      const rec = validBase();
 
       const first = await store.submit(rec);
       const second = await store.submit(deepClone(rec));
@@ -121,18 +122,16 @@ describe("MongoScoredSignalEvidenceStore (MONGO-STORE / Slot 2)", () => {
 
     it("distinguishes a CONFLICTING duplicate (same signalId, different content)", async () => {
       const { db, store } = makeStore();
-      const rec = validMinimalScored();
+      const rec = validBase();
       await store.submit(rec);
 
       const conflicting = deepClone(rec);
       conflicting.scoredSignal.uwrScore = 0.99; // schema- & continuity-valid, different content
 
-      await expect(store.submit(conflicting)).rejects.toBeInstanceOf(
-        EvidenceIdempotencyConflictError
-      );
+      await expect(store.submit(conflicting)).rejects.toBeInstanceOf(EvidenceIdempotencyConflictError);
       await expect(store.submit(conflicting)).rejects.toMatchObject({ code: "IDEMPOTENCY_CONFLICT" });
 
-      // append-once: the stored record was NOT overwritten by the conflicting submit.
+      // append-once: the stored record was NOT overwritten.
       const stored = await store.getBySignalId(rec.signalId);
       expect(stored?.scoredSignal.uwrScore).toBe(rec.scoredSignal.uwrScore);
       expect(db._collection(COLLECTION)._allDocs()).toHaveLength(1);
@@ -142,15 +141,14 @@ describe("MongoScoredSignalEvidenceStore (MONGO-STORE / Slot 2)", () => {
   describe("supersession & immutable-after-FINALIZED (D-MONGO-5)", () => {
     it("supersedes with a governed correction, archiving the prior version to history", async () => {
       const { db, store } = makeStore();
-      const v1 = validMinimalScored(); // SCORED, finalized:false, v1, uwrScore 0.55
+      const v1 = validBase(); // SCORED, finalized:false, v1
+      const baseScore = v1.scoredSignal.uwrScore;
       await store.submit(v1);
 
-      // A governed CORRECTION: new schema-versioned record with the predecessor
-      // link; content corrected (uwrScore), lifecycleState unchanged.
       const v2 = deepClone(v1);
       v2.recordVersion = 2;
       v2.supersedesRecordHash = PRED_HASH;
-      v2.scoredSignal.uwrScore = 0.6;
+      v2.scoredSignal.uwrScore = 0.6; // a governed content correction
 
       const res = await store.supersede(v2);
       expect(res.outcome).toBe("superseded");
@@ -161,21 +159,19 @@ describe("MongoScoredSignalEvidenceStore (MONGO-STORE / Slot 2)", () => {
       expect(current?.recordVersion).toBe(2);
       expect(current?.scoredSignal.uwrScore).toBe(0.6);
 
-      // exactly one current doc; the superseded v1 is retained immutably in history.
       expect(db._collection(COLLECTION)._allDocs()).toHaveLength(1);
       const hist = db._collection(HISTORY)._allDocs();
       expect(hist).toHaveLength(1);
       const archived = hist[0] as unknown as ScoredSignalEvidenceRecord;
       expect(archived.recordVersion).toBe(1);
-      expect(archived.scoredSignal.uwrScore).toBe(0.55);
+      expect(archived.scoredSignal.uwrScore).toBe(baseScore);
     });
 
     it("requires supersedesRecordHash (explicit supersession chain)", async () => {
       const { store } = makeStore();
-      const v1 = validMinimalScored();
-      await store.submit(v1);
+      await store.submit(validBase());
 
-      const v2 = deepClone(v1);
+      const v2 = deepClone(validBase());
       v2.recordVersion = 2;
       v2.scoredSignal.uwrScore = 0.6; // no supersedesRecordHash
       await expect(store.supersede(v2)).rejects.toBeInstanceOf(EvidenceSupersedeError);
@@ -184,22 +180,19 @@ describe("MongoScoredSignalEvidenceStore (MONGO-STORE / Slot 2)", () => {
 
     it("refuses to supersede a FINALIZED record (immutable-after-FINALIZED)", async () => {
       const { store } = makeStore();
-      const finalizedRec = canonicalExample(); // FINALIZED, finalized:true
-      await store.submit(finalizedRec);
+      await store.submit(finalizedBase());
 
-      const attempt = deepClone(finalizedRec);
+      const attempt = deepClone(finalizedBase());
       attempt.recordVersion = 2;
       attempt.supersedesRecordHash = PRED_HASH;
 
       await expect(store.supersede(attempt)).rejects.toBeInstanceOf(EvidenceImmutableError);
-      await expect(store.supersede(attempt)).rejects.toMatchObject({
-        code: "IMMUTABLE_AFTER_FINALIZED",
-      });
+      await expect(store.supersede(attempt)).rejects.toMatchObject({ code: "IMMUTABLE_AFTER_FINALIZED" });
     });
 
     it("refuses to supersede when no current record exists", async () => {
       const { store } = makeStore();
-      const v2 = deepClone(validMinimalScored());
+      const v2 = deepClone(validBase());
       v2.recordVersion = 2;
       v2.supersedesRecordHash = PRED_HASH;
       await expect(store.supersede(v2)).rejects.toBeInstanceOf(EvidenceSupersedeError);
@@ -207,10 +200,9 @@ describe("MongoScoredSignalEvidenceStore (MONGO-STORE / Slot 2)", () => {
 
     it("refuses a non-monotonic recordVersion", async () => {
       const { store } = makeStore();
-      const v1 = validMinimalScored();
-      await store.submit(v1);
+      await store.submit(validBase());
 
-      const notNewer = deepClone(v1);
+      const notNewer = deepClone(validBase());
       notNewer.recordVersion = 1; // not greater than current v1
       notNewer.supersedesRecordHash = PRED_HASH;
       notNewer.scoredSignal.uwrScore = 0.6;
@@ -221,7 +213,7 @@ describe("MongoScoredSignalEvidenceStore (MONGO-STORE / Slot 2)", () => {
   describe("first-write invariant & concurrency-safe init", () => {
     it("rejects a first-write submit with recordVersion > 1 (use supersede)", async () => {
       const { store } = makeStore();
-      const bad = deepClone(validMinimalScored());
+      const bad = deepClone(validBase());
       bad.recordVersion = 2;
       bad.supersedesRecordHash = PRED_HASH;
       await expect(store.submit(bad)).rejects.toBeInstanceOf(EvidenceSupersedeError);
@@ -229,18 +221,16 @@ describe("MongoScoredSignalEvidenceStore (MONGO-STORE / Slot 2)", () => {
 
     it("initializes the store exactly once under concurrent submits", async () => {
       const { db, store } = makeStore();
-      const a = validMinimalScored();
+      const a = validBase();
       const b = deepClone(a);
-      b.signalId = "sig-min-0002";
-      b.scoredSignal.signalId = "sig-min-0002";
-      b.provenanceRecord.signalId = "sig-min-0002";
-      b.scoredSignal.provenanceRecordRef = "provenance-record:sig-min-0002";
+      b.signalId = `${a.signalId}-2`;
+      b.scoredSignal.signalId = b.signalId;
+      b.provenanceRecord.signalId = b.signalId;
 
       await Promise.all([store.submit(a), store.submit(b)]);
 
-      // memoized init: the collection is created once, not once-per-submit.
       const created = db.createdCollections.filter((n) => n === COLLECTION);
-      expect(created).toHaveLength(1);
+      expect(created).toHaveLength(1); // memoized init, not once-per-submit
       expect(db._collection(COLLECTION)._allDocs()).toHaveLength(2);
     });
   });
@@ -248,22 +238,19 @@ describe("MongoScoredSignalEvidenceStore (MONGO-STORE / Slot 2)", () => {
   describe("store shape — unique signalId index, standard (not time-series)", () => {
     it("creates a STANDARD collection with a UNIQUE signalId index", async () => {
       const { db, store } = makeStore();
-      await store.submit(validMinimalScored());
+      await store.submit(validBase());
 
-      // createCollection was called WITHOUT time-series options.
       expect(db.createdCollections).toContain(COLLECTION);
-      expect(db.createCollectionOptions.get(COLLECTION)).toBeUndefined();
+      expect(db.createCollectionOptions.get(COLLECTION)).toBeUndefined(); // no timeseries options
 
       const indexes = db._collection(COLLECTION)._indexes();
       const sig = indexes.find((i) => i.keys.length === 1 && i.keys[0] === "signalId");
-      expect(sig, "signalId index must exist").toBeTruthy();
-      expect(sig?.unique, "signalId index must be UNIQUE").toBe(true);
+      expect(sig?.unique).toBe(true);
     });
 
-    it("enforces uniqueness at the store layer (duplicate insert is a store-level dup key)", async () => {
-      // Two DIFFERENT records with the same signalId cannot both persist.
+    it("enforces uniqueness at the store layer (different content, same signalId cannot both persist)", async () => {
       const { db, store } = makeStore();
-      const a = validMinimalScored();
+      const a = validBase();
       const b = deepClone(a);
       b.scoredSignal.uwrScore = 0.42;
 

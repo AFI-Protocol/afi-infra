@@ -1,0 +1,37 @@
+{
+  "schema": "afi.scored-signal-evidence.v1",
+  "signalId": "sig-min-0001",
+  "analystId": "froggy",
+  "strategyId": "trend_pullback_v1",
+  "strategyVersion": "1.0.0",
+  "canonicalizationVersion": "afi.hash.v1",
+  "lifecycleState": "SCORED",
+  "finalized": false,
+  "scoredSignal": {
+    "schema": "afi.scored-signal.v1",
+    "signalId": "sig-min-0001",
+    "analystId": "froggy",
+    "strategyId": "trend_pullback_v1",
+    "strategyVersion": "1.0.0",
+    "direction": "long",
+    "uwrScore": 0.55,
+    "provenanceRecordRef": "provenance-record:sig-min-0001"
+  },
+  "provenanceRecord": {
+    "schema": "afi.provenance-record.v1",
+    "signalId": "sig-min-0001",
+    "canonicalizationVersion": "afi.hash.v1",
+    "inputHash": {
+      "algorithm": "sha256",
+      "canonicalizationVersion": "afi.hash.v1",
+      "domainTag": "afi.d2.signal-input",
+      "value": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "outputHash": {
+      "algorithm": "sha256",
+      "canonicalizationVersion": "afi.hash.v1",
+      "domainTag": "afi.d2.scored-output",
+      "value": "3f79bb7b435b05321651daefd374cdc681dc06faa65e374e38337b88ca046dea"
+    }
+  }
+}

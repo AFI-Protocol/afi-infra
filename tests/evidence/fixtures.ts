@@ -1,35 +1,50 @@
-// Loads the GOVERNED test vectors straight from the afi-config package, so the
-// store tests are tied to the same fixtures the contract's own drift guards
-// use. Nothing here is hand-authored — the canonical shape lives in afi-config.
+// Test fixtures. The store-behaviour tests use a VENDORED governed record
+// (byte-identical to afi-config, drift-guarded) so they run standalone in CI.
+// The conformance + drift tests reach into the afi-config sibling repo ONLY
+// when it is present (local / monorepo CI); they skip otherwise.
 
-import { createRequire } from "node:module";
+import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import type { ScoredSignalEvidenceRecord } from "../../src/evidence/types.js";
 
-const require = createRequire(import.meta.url);
-const afiConfigRoot = dirname(require.resolve("afi-config/package.json"));
-const EX_DIR = join(afiConfigRoot, "examples/scored-signal-evidence/v1");
+const HERE = dirname(fileURLToPath(import.meta.url));
 
-function load<T = ScoredSignalEvidenceRecord>(rel: string): T {
-  return JSON.parse(readFileSync(join(EX_DIR, rel), "utf-8")) as T;
+/** A valid non-finalized governed record (vendored copy of afi-config's
+ *  minimal-scored vector). SCORED, finalized:false, recordVersion absent. */
+export function validBase(): ScoredSignalEvidenceRecord {
+  return JSON.parse(readFileSync(join(HERE, "vendored/minimal-scored.json"), "utf-8"));
 }
 
-/** Canonical example — FINALIZED (finalized: true). */
-export const canonicalExample = (): ScoredSignalEvidenceRecord =>
-  load("scored-signal-evidence.example.json");
-
-/** Valid vectors. */
-export const validMinimalScored = (): ScoredSignalEvidenceRecord =>
-  load("vectors/valid/minimal-scored.json"); // SCORED, finalized:false
-export const validQualified = (): ScoredSignalEvidenceRecord =>
-  load("vectors/valid/qualified-mid-lifecycle.json"); // QUALIFIED, finalized:false
-export const validEpochEligible = (): ScoredSignalEvidenceRecord =>
-  load("vectors/valid/epoch-eligible-superseded.json"); // EPOCH_ELIGIBLE, finalized:true
-
-/** Invalid vectors (loaded as unknown — they intentionally violate the contract). */
-export const invalidVector = (name: string): unknown => load<unknown>(`vectors/invalid/${name}`);
+/** Same record advanced to a FINALIZED state (finalized:true) — schema-valid
+ *  by the contract's if/then finalized binding. Used for immutability tests. */
+export function finalizedBase(): ScoredSignalEvidenceRecord {
+  const r = validBase();
+  r.lifecycleState = "FINALIZED";
+  r.finalized = true;
+  return r;
+}
 
 export function deepClone<T>(v: T): T {
   return JSON.parse(JSON.stringify(v));
+}
+
+// --- afi-config sibling access (gated) --------------------------------------
+
+/** afi-config repo root if present as a sibling checkout, else null. */
+export const afiConfigRoot: string | null = (() => {
+  const candidate = join(HERE, "../../../afi-config");
+  return existsSync(join(candidate, "package.json")) ? candidate : null;
+})();
+
+export const afiConfigAvailable = afiConfigRoot !== null;
+
+const EX_DIR = afiConfigRoot
+  ? join(afiConfigRoot, "examples/scored-signal-evidence/v1")
+  : null;
+
+/** Load a governed example/vector from the afi-config sibling repo. */
+export function loadAfiConfigExample<T = unknown>(rel: string): T {
+  if (!EX_DIR) throw new Error("afi-config sibling repo not available");
+  return JSON.parse(readFileSync(join(EX_DIR, rel), "utf-8")) as T;
 }

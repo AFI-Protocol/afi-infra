@@ -1,0 +1,95 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://afi-protocol.org/schemas/provenance/v1/provenance-record.schema.json",
+  "title": "AFI ProvenanceRecord v1 (District 2 M1 DRAFT)",
+  "description": "DRAFT / NON-IMPLEMENTATION canonical provenance record for one signal's pipeline pass: input hash, enrichment hash, output hash, evidence and source-disclosure references, replay pins, domain tags, and stage schema versions. Generalizes the POC AuditRecord concept WITHOUT demoOnly fields. SCOPE BOUNDARY: this record carries NO L1 anchoring, NO settlement claims, NO rewards, NO vault mechanics, and NO validator-decision fields — such fields are structurally rejected (additionalProperties:false).",
+  "$comment": "Timestamp policy (District 2 hash doctrine): this record intentionally carries no runtime/storage timestamps (createdAt, storedAt, ...). Time lives in the normalized evidence/domain timestamps of the referenced EvidenceRef objects. Storage concerns (e.g. MongoDB) are an implementation profile referenced via storageProfileRef, not protocol canon.",
+  "x-afiStatus": "draft-non-implementation",
+  "x-afiPartOf": "AFI District 2 — Canonical Data & Provenance Boundary (D2 M1)",
+  "x-afiDoctrineRefs": [
+    "District 2 D-17 decision — authorizes D2 M1 only (afi-config schema drafts and tests)",
+    "District 2 hash doctrine — volatile processing timestamps are not canonical hash material; normalized evidence/domain timestamps are"
+  ],
+  "x-afiOpenItems": {
+    "PR-O1": "Whether enrichmentHash binds a per-lane hash list vs a single bundle hash — this draft models a single optional enrichment/bundle hash; per-lane hashes live in EnrichmentProvenance.laneOutputHash.",
+    "PR-O2": "schemaVersions stage-key registry — OPEN; free-form stage → schema-id map in this draft."
+  },
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "signalId",
+    "canonicalizationVersion",
+    "inputHash",
+    "outputHash"
+  ],
+  "properties": {
+    "schema": {
+      "type": "string",
+      "const": "afi.provenance-record.v1",
+      "description": "Schema version identifier for ProvenanceRecord v1."
+    },
+    "signalId": {
+      "type": "string",
+      "description": "Stable unique identifier of the signal this record covers (same id space as USS provenance.signalId).",
+      "minLength": 1
+    },
+    "canonicalizationVersion": {
+      "type": "string",
+      "description": "Canonical serialization rules version used for every hash in this record (e.g. 'afi.hash.v1'). Must agree with the canonicalizationVersion inside each CanonicalHash.",
+      "pattern": "^afi\\.hash\\.v[0-9]+$"
+    },
+    "inputHash": {
+      "$ref": "canonical-hash.schema.json",
+      "description": "CanonicalHash v1 of the canonical input (e.g. the normalized inbound signal) — signal-input domain."
+    },
+    "enrichmentHash": {
+      "$ref": "canonical-hash.schema.json",
+      "description": "OPTIONAL CanonicalHash v1 of the enrichment bundle (aggregate over lane outputs) — enrichment-bundle domain."
+    },
+    "outputHash": {
+      "$ref": "canonical-hash.schema.json",
+      "description": "CanonicalHash v1 of the canonical output (e.g. the ScoredSignal v1 projection) — scored-output domain."
+    },
+    "evidenceRefs": {
+      "type": "array",
+      "description": "EvidenceRef v1 objects backing this pipeline pass.",
+      "items": { "$ref": "evidence-ref.schema.json" }
+    },
+    "sourceDisclosureRefs": {
+      "type": "array",
+      "description": "References (sourceId values) to SourceDisclosureProfile v1 objects for the sources involved.",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "replayProfileRef": {
+      "type": "string",
+      "description": "OPTIONAL reference to the ReplayProfile v1 pinning replay inputs for this pass.",
+      "minLength": 1
+    },
+    "domainTags": {
+      "type": "array",
+      "description": "OPTIONAL summary of the off-chain hash domains touched by this record (mirrors the domainTag values of the contained hashes).",
+      "items": {
+        "type": "string",
+        "pattern": "^afi(\\.[a-z0-9-]+)+$"
+      }
+    },
+    "schemaVersions": {
+      "type": "object",
+      "description": "OPTIONAL map of pipeline stage → schema version id used at that stage (e.g. {\"input\": \"afi.usignal.v1.1\", \"envelope\": \"afi.analyst-input-envelope.v1\", \"output\": \"afi.scored-signal.v1\"}).",
+      "additionalProperties": { "type": "string" }
+    },
+    "storageProfileRef": {
+      "type": "string",
+      "description": "OPTIONAL reference to the storage implementation profile (e.g. a MongoDB persistence profile) under which the record is stored. Storage remains an implementation profile, NOT protocol canon; no storage fields appear inline.",
+      "minLength": 1
+    },
+    "notes": {
+      "type": "string",
+      "description": "OPTIONAL free-form provenance notes."
+    }
+  }
+}

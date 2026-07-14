@@ -23,7 +23,6 @@
     "vitest": "^1.0.0"
   },
   "dependencies": {
-    "afi-config": "file:../afi-config",
     "afi-core": "file:../afi-core",
     "ajv": "^8.12.0",
     "ajv-formats": "^3.0.1",
