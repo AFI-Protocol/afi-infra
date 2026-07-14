@@ -58,8 +58,20 @@ function afiConfigSourceFor(file: string): string {
   return join(afiConfigRoot as string, "schemas", sub, file);
 }
 
-// Enforced whenever the afi-config repo is present (local / monorepo CI). Skips
-// in a standalone (single-repo) checkout where the sibling is unavailable.
+// In CI, AFI_REQUIRE_AFI_CONFIG=1 turns a missing afi-config source into a HARD
+// FAILURE, so the drift/conformance checks can never be silently skipped there.
+if (process.env.AFI_REQUIRE_AFI_CONFIG === "1" && !afiConfigAvailable) {
+  describe("governed-schema drift (REQUIRED by CI)", () => {
+    it("must have the afi-config source available (AFI_CONFIG_REPO_DIR)", () => {
+      throw new Error(
+        "AFI_REQUIRE_AFI_CONFIG=1 but the afi-config source is unavailable — CI must check out afi-config at the pinned commit."
+      );
+    });
+  });
+}
+
+// Enforced whenever the afi-config repo is present (local / monorepo / CI with a
+// pinned checkout). Skips only in a standalone checkout without the source.
 describe.skipIf(!afiConfigAvailable)("drift guard vs the afi-config source", () => {
   it("every vendored governed schema file is byte-identical to afi-config", () => {
     for (const file of GOVERNED_SCHEMA_FILES) {

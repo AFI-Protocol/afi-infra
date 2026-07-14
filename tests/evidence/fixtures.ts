@@ -31,10 +31,13 @@ export function deepClone<T>(v: T): T {
 
 // --- afi-config sibling access (gated) --------------------------------------
 
-/** afi-config repo root if present as a sibling checkout, else null. */
+/** afi-config repo root if available (explicit AFI_CONFIG_REPO_DIR — used by CI
+ *  to point at a pinned checkout — or a sibling checkout), else null. */
 export const afiConfigRoot: string | null = (() => {
-  const candidate = join(HERE, "../../../afi-config");
-  return existsSync(join(candidate, "package.json")) ? candidate : null;
+  const env = process.env.AFI_CONFIG_REPO_DIR;
+  if (env && existsSync(join(env, "package.json"))) return env;
+  const sibling = join(HERE, "../../../afi-config");
+  return existsSync(join(sibling, "package.json")) ? sibling : null;
 })();
 
 export const afiConfigAvailable = afiConfigRoot !== null;

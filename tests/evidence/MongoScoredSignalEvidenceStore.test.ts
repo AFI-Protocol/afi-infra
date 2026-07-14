@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { FakeDb } from "./fakeMongo.js";
+import { FakeMongoClient } from "./fakeMongo.js";
 import { validBase, finalizedBase, deepClone } from "./fixtures.js";
 import { MongoScoredSignalEvidenceStore } from "../../src/evidence/MongoScoredSignalEvidenceStore.js";
 import {
@@ -7,6 +7,7 @@ import {
   EvidenceContinuityError,
   EvidenceIdempotencyConflictError,
   EvidenceImmutableError,
+  EvidencePersistenceError,
   EvidenceSupersedeError,
   type ScoredSignalEvidenceRecord,
 } from "../../src/evidence/types.js";
@@ -23,14 +24,15 @@ const PRED_HASH = {
 };
 
 function makeStore() {
-  const db = new FakeDb();
+  const client = new FakeMongoClient();
+  const db = client.db();
   const store = new MongoScoredSignalEvidenceStore({
-    db: db as never,
+    client: client as never,
     collectionName: COLLECTION,
     historyCollectionName: HISTORY,
     logger: {},
   });
-  return { db, store };
+  return { client, db, store };
 }
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -207,6 +209,59 @@ describe("MongoScoredSignalEvidenceStore (MONGO-STORE / Slot 2)", () => {
       notNewer.supersedesRecordHash = PRED_HASH;
       notNewer.scoredSignal.uwrScore = 0.6;
       await expect(store.supersede(notNewer)).rejects.toBeInstanceOf(EvidenceSupersedeError);
+    });
+
+    it("is ATOMIC: a failure between history archival and current install rolls back", async () => {
+      const { db, store } = makeStore();
+      const v1 = validBase();
+      await store.submit(v1);
+
+      // Force the current-collection replaceOne to throw mid-transaction, AFTER
+      // the history archive has been written inside the same transaction.
+      db._collection(COLLECTION).failReplaceOnce = 1;
+
+      const v2 = deepClone(v1);
+      v2.recordVersion = 2;
+      v2.supersedesRecordHash = PRED_HASH;
+      v2.scoredSignal.uwrScore = 0.6;
+
+      await expect(store.supersede(v2)).rejects.toBeInstanceOf(EvidencePersistenceError);
+
+      // No partial state: the transaction rolled back — history is empty and the
+      // current record is untouched at v1.
+      expect(db._collection(HISTORY)._allDocs()).toHaveLength(0);
+      const current = await store.getBySignalId(v1.signalId);
+      expect(current?.recordVersion).toBe(1);
+      expect(current?.scoredSignal.uwrScore).toBe(v1.scoredSignal.uwrScore);
+    });
+
+    it("serializes concurrent supersedes: one wins, the other is a typed conflict", async () => {
+      const { db, store } = makeStore();
+      const v1 = validBase();
+      await store.submit(v1);
+
+      const attempt = (score: number) => {
+        const r = deepClone(v1);
+        r.recordVersion = 2;
+        r.supersedesRecordHash = PRED_HASH;
+        r.scoredSignal.uwrScore = score;
+        return r;
+      };
+
+      const results = await Promise.allSettled([
+        store.supersede(attempt(0.6)),
+        store.supersede(attempt(0.7)),
+      ]);
+      const fulfilled = results.filter((r) => r.status === "fulfilled");
+      const rejected = results.filter((r) => r.status === "rejected");
+      expect(fulfilled).toHaveLength(1);
+      expect(rejected).toHaveLength(1);
+      expect((rejected[0] as PromiseRejectedResult).reason).toBeInstanceOf(EvidenceSupersedeError);
+
+      // consistent final state: current advanced to v2 exactly once; one v1 archived.
+      const current = await store.getBySignalId(v1.signalId);
+      expect(current?.recordVersion).toBe(2);
+      expect(db._collection(HISTORY)._allDocs()).toHaveLength(1);
     });
   });
 

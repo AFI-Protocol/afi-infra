@@ -9,6 +9,11 @@
 // minimum replay retrieval (D-MONGO-9). No HTTP/API surface (ATLAS-GOV). It does
 // not touch, migrate, or read the legacy reactor/tssd stores.
 //
+// Supersession is ATOMIC: the two-collection archive+install runs inside a
+// MongoDB multi-document transaction, so a crash or error can never leave the
+// current/history collections partially updated. (Transactions require a replica
+// set — the standard production topology.)
+//
 // Scope note (LIFE-GOV): this store persists a governed record and models
 // governed CORRECTIONS via `supersede` (D-MONGO-5). It does not own or decide
 // how LIFE-GOV lifecycle *transitions* (who advances SCORED→CERTIFIED→…) are
@@ -20,6 +25,7 @@ import {
   EvidenceIdempotencyConflictError,
   EvidenceImmutableError,
   EvidencePersistenceError,
+  EvidenceStoreError,
   EvidenceSupersedeError,
   EvidenceValidationError,
   EvidenceContinuityError,
@@ -33,15 +39,16 @@ import { checkIdentifierContinuity, isFinalized } from "./identifierContinuity.j
 
 // --- Minimal structural MongoDB surface (injectable for testing) ------------
 
+type WriteOptions = { session?: unknown };
 type ReplaceResult = { matchedCount?: number; modifiedCount?: number };
 
 type CollectionLike<T> = {
-  findOne(filter: Record<string, unknown>): Promise<T | null>;
-  insertOne(doc: T): Promise<unknown>;
+  findOne(filter: Record<string, unknown>, options?: WriteOptions): Promise<T | null>;
+  insertOne(doc: T, options?: WriteOptions): Promise<unknown>;
   replaceOne(
     filter: Record<string, unknown>,
     doc: T,
-    options?: Record<string, unknown>
+    options?: WriteOptions
   ): Promise<ReplaceResult>;
   createIndex(
     index: Record<string, number>,
@@ -58,10 +65,16 @@ type DbLike = {
   ): { toArray(): Promise<Array<Record<string, unknown>>> };
 };
 
+type ClientSessionLike = {
+  withTransaction<T>(fn: () => Promise<T>): Promise<T>;
+  endSession(): Promise<void>;
+};
+
 type MongoClientLike = {
   connect(): Promise<void>;
   close(): Promise<void>;
   db(name: string): DbLike;
+  startSession(): ClientSessionLike;
 };
 
 type Logger = {
@@ -83,9 +96,8 @@ export interface MongoScoredSignalEvidenceStoreConfig {
   /** Superseded-version history collection (append-only). */
   historyCollectionName?: string;
   logger?: Logger;
-  /** Inject a client or db to bypass the real driver (tests). */
+  /** Inject a client to bypass the real driver (tests). Must be session-capable. */
   client?: MongoClientLike;
-  db?: DbLike;
 }
 
 const DEFAULT_DB_NAME = "afi_scored_signal_evidence";
@@ -119,7 +131,6 @@ function isDuplicateKeyError(err: unknown): boolean {
 export class MongoScoredSignalEvidenceStore implements IScoredSignalEvidenceStore {
   private readonly logger: Logger;
   private readonly providedClient?: MongoClientLike;
-  private readonly providedDb?: DbLike;
   private readonly mongoUri?: string;
   private readonly dbName: string;
   private readonly collectionName: string;
@@ -133,7 +144,6 @@ export class MongoScoredSignalEvidenceStore implements IScoredSignalEvidenceStor
 
   constructor(config: MongoScoredSignalEvidenceStoreConfig = {}) {
     this.providedClient = config.client;
-    this.providedDb = config.db;
     this.mongoUri =
       config.mongoUri ??
       process.env.AFI_EVIDENCE_MONGODB_URI ??
@@ -235,43 +245,47 @@ export class MongoScoredSignalEvidenceStore implements IScoredSignalEvidenceStor
     }
     const canonical = this.normalize({ ...record, recordVersion: toVersion });
 
-    // Archive the current version immutably as history (append-once), then swap
-    // the current slot to the new version. The superseded record is retained;
-    // no evidence content is mutated in place (MONGO-GOV D-MONGO-5).
+    // ATOMIC supersession: archive the current version to history AND install
+    // the new version in a single multi-document transaction. Either both
+    // commit or neither — a crash/error can never leave a partial state. The
+    // replaceOne filter pins fromVersion (optimistic concurrency): a concurrent
+    // supersede either loses the archive dup-key race or the version match, and
+    // is surfaced as a typed error — never a silent lost update.
+    const session = this.client!.startSession();
     try {
-      await this.history!.insertOne(this.toDoc(currentRecord));
-    } catch (err) {
-      if (!isDuplicateKeyError(err)) {
-        throw new EvidencePersistenceError(
-          `Archiving superseded record to history failed for signalId '${signalId}'.`,
-          err,
-          signalId
+      await session.withTransaction(async () => {
+        try {
+          await this.history!.insertOne(this.toDoc(currentRecord), { session });
+        } catch (err) {
+          if (isDuplicateKeyError(err)) {
+            throw new EvidenceSupersedeError(
+              `Concurrent supersede detected for signalId '${signalId}': version ${fromVersion} was already archived.`,
+              signalId
+            );
+          }
+          throw err;
+        }
+        const res = await this.current!.replaceOne(
+          { signalId, recordVersion: fromVersion },
+          this.toDoc(canonical),
+          { session }
         );
-      }
-      // Idempotent re-archive of the same (signalId, recordVersion) — tolerate.
-    }
-
-    // Optimistic concurrency: only replace the current record if it is still at
-    // fromVersion. A 0-match means a concurrent supersede won — surfaced, never
-    // a silent lost update or false success.
-    let res: ReplaceResult;
-    try {
-      res = await this.current!.replaceOne(
-        { signalId, recordVersion: fromVersion },
-        this.toDoc(canonical)
-      );
+        if ((res?.matchedCount ?? 0) === 0) {
+          throw new EvidenceSupersedeError(
+            `Concurrent modification: current record for signalId '${signalId}' was no longer at version ${fromVersion} when installing the superseding version.`,
+            signalId
+          );
+        }
+      });
     } catch (err) {
+      if (err instanceof EvidenceStoreError) throw err;
       throw new EvidencePersistenceError(
-        `Installing superseding record failed for signalId '${signalId}'.`,
+        `Atomic supersede failed for signalId '${signalId}'.`,
         err,
         signalId
       );
-    }
-    if ((res?.matchedCount ?? 0) === 0) {
-      throw new EvidenceSupersedeError(
-        `Concurrent modification: current record for signalId '${signalId}' was no longer at version ${fromVersion} when installing the superseding version.`,
-        signalId
-      );
+    } finally {
+      await session.endSession();
     }
 
     return { outcome: "superseded", signalId, fromVersion, toVersion, record: canonical };
@@ -366,28 +380,24 @@ export class MongoScoredSignalEvidenceStore implements IScoredSignalEvidenceStor
   }
 
   private async doInit(): Promise<void> {
-    if (this.providedDb) {
-      this.db = this.providedDb;
+    if (this.providedClient) {
+      this.client = this.providedClient;
     } else {
-      if (this.providedClient) {
-        this.client = this.providedClient;
-      } else {
-        if (!this.mongoUri) {
-          throw new EvidencePersistenceError(
-            "MongoScoredSignalEvidenceStore requires a MongoDB URI (AFI_EVIDENCE_MONGODB_URI) or an injected client/db."
-          );
-        }
-        // @ts-ignore MongoDB driver resolved from the runtime environment.
-        const { MongoClient } = await import("mongodb");
-        this.client = new MongoClient(this.mongoUri) as unknown as MongoClientLike;
-        try {
-          await this.client.connect();
-        } catch (err) {
-          throw new EvidencePersistenceError("Failed to connect to MongoDB.", err);
-        }
+      if (!this.mongoUri) {
+        throw new EvidencePersistenceError(
+          "MongoScoredSignalEvidenceStore requires a MongoDB URI (AFI_EVIDENCE_MONGODB_URI) or an injected client."
+        );
       }
-      this.db = this.client!.db(this.dbName);
+      // @ts-ignore MongoDB driver resolved from the runtime environment.
+      const { MongoClient } = await import("mongodb");
+      this.client = new MongoClient(this.mongoUri) as unknown as MongoClientLike;
+      try {
+        await this.client.connect();
+      } catch (err) {
+        throw new EvidencePersistenceError("Failed to connect to MongoDB.", err);
+      }
     }
+    this.db = this.client.db(this.dbName);
 
     await this.ensureStandardCollection(this.collectionName);
     await this.ensureStandardCollection(this.historyCollectionName);
