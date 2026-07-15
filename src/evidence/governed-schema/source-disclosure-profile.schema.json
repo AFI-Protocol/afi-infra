@@ -1,0 +1,115 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://afi-protocol.org/schemas/provenance/v1/source-disclosure-profile.schema.json",
+  "title": "AFI SourceDisclosureProfile v1 (District 2 M1 DRAFT)",
+  "description": "DRAFT / NON-IMPLEMENTATION descriptive metadata about an evidence/data source: what kind of source it is, how much of it is disclosed, why parts are withheld, and how replayable it is. DESCRIPTIVE ONLY — District 2 defines computable metadata; BenchKit owns all weighting/evaluation policy. This schema MUST NOT encode reward weights, transparency bonuses, payout logic, or reputation effects, and additionalProperties:false rejects any such fields.",
+  "$comment": "Boundary: fields here may be READ by downstream evaluation policy (BenchKit), but no evaluation/weighting semantics are defined or implied in this schema.",
+  "x-afiStatus": "draft-non-implementation",
+  "x-afiPartOf": "AFI District 2 — Canonical Data & Provenance Boundary (D2 M1)",
+  "x-afiDoctrineRefs": [
+    "District 2 D-17 decision — authorizes D2 M1 only (afi-config schema drafts and tests)",
+    "BenchKit owns weighting/evaluation policy; District 2 defines descriptive, computable metadata only"
+  ],
+  "x-afiOpenItems": {
+    "SDP-O1": "sourceClass taxonomy — draft enum, expected to evolve; values here are proposals, not canon.",
+    "SDP-O2": "licenseConstraint taxonomy — draft enum; 'custom' + notes covers everything else.",
+    "SDP-O3": "providerAttestation mechanics (what 'cryptographic' binds to) — OPEN."
+  },
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "sourceId",
+    "sourceClass",
+    "disclosureLevel",
+    "replayabilityLevel"
+  ],
+  "properties": {
+    "sourceId": {
+      "type": "string",
+      "description": "Stable identifier for the source this profile describes. EvidenceRef.sourceRef and enrichment sourceDisclosureRefs point at this value.",
+      "minLength": 1
+    },
+    "sourceClass": {
+      "type": "string",
+      "description": "Descriptive classification of the source (DRAFT taxonomy).",
+      "enum": [
+        "exchange-api",
+        "market-data-vendor",
+        "onchain-data",
+        "social",
+        "news",
+        "human-analyst",
+        "model-output",
+        "other"
+      ]
+    },
+    "disclosureLevel": {
+      "type": "string",
+      "description": "How much of the source's raw material is disclosed downstream. 'full' = raw payloads disclosable; 'partial' = some payloads/fields redacted; 'summary-only' = only derived summaries disclosed; 'withheld' = hash-only, no payload disclosure.",
+      "enum": ["full", "partial", "summary-only", "withheld"]
+    },
+    "withheldReason": {
+      "type": "string",
+      "description": "OPTIONAL categorical reason why material is withheld/redacted (meaningful when disclosureLevel is not 'full').",
+      "enum": [
+        "license-restricted",
+        "proprietary",
+        "privacy",
+        "regulatory",
+        "security",
+        "other"
+      ]
+    },
+    "licenseConstraint": {
+      "type": "string",
+      "description": "OPTIONAL license constraint governing redistribution of the source material (DRAFT taxonomy).",
+      "enum": [
+        "none",
+        "attribution-required",
+        "no-redistribution",
+        "internal-use-only",
+        "commercial-restricted",
+        "custom"
+      ]
+    },
+    "replayabilityLevel": {
+      "type": "string",
+      "description": "How replayable observations from this source are. 'deterministic' = byte-identical re-fetch/re-derivation; 'pinned-inputs' = replayable from pinned snapshots/hashes; 'best-effort' = approximate replay only; 'non-replayable' = cannot be replayed.",
+      "enum": ["deterministic", "pinned-inputs", "best-effort", "non-replayable"]
+    },
+    "providerAttestation": {
+      "type": "string",
+      "description": "OPTIONAL descriptive attestation level for the source's provider. Describes what backing exists — carries no scoring semantics.",
+      "enum": ["none", "self-attested", "third-party-attested", "cryptographic"]
+    },
+    "analystVisibleSummary": {
+      "type": "string",
+      "description": "OPTIONAL human-readable summary of the source intended for analyst visibility."
+    },
+    "validatorVisibleSummary": {
+      "type": "string",
+      "description": "OPTIONAL human-readable summary of the source intended for validator visibility (may be narrower than the analyst summary)."
+    },
+    "qualityClaim": {
+      "type": "object",
+      "description": "OPTIONAL descriptive quality claim made about the source. A claim, not a score: it carries no weights and has no defined reward, payout, or reputation effect.",
+      "additionalProperties": false,
+      "required": ["statement"],
+      "properties": {
+        "statement": {
+          "type": "string",
+          "description": "The quality claim itself, as a human-readable statement.",
+          "minLength": 1
+        },
+        "basis": {
+          "type": "string",
+          "description": "OPTIONAL basis for the claim (methodology, sample, reference)."
+        }
+      }
+    },
+    "notes": {
+      "type": "string",
+      "description": "OPTIONAL free-form descriptive notes about the source."
+    }
+  }
+}

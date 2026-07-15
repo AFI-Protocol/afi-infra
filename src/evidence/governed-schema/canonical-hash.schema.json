@@ -1,0 +1,52 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://afi-protocol.org/schemas/provenance/v1/canonical-hash.schema.json",
+  "title": "AFI CanonicalHash v1 (District 2 M1 DRAFT)",
+  "description": "DRAFT / NON-IMPLEMENTATION structural spec for canonical hash references in off-chain AFI domains. Fixes the reference shape only (algorithm, canonicalization version, domain tag, digest value); it does NOT implement hashing, canonicalization, or verification. EXPLICIT SEPARATION: this object covers off-chain sha256 domains only. On-chain keccak256 domains (settlement anchoring, EAS commitments, contract-facing digests) are a separate domain family and MUST NOT be represented with this object.",
+  "$comment": "Schema/spec only — no hashing code is defined or implied by this file. The 'sha256'-only algorithm enum is deliberate: adding an algorithm requires a new schema version, and keccak256 is intentionally excluded to keep off-chain canonical hashing separated from on-chain domains.",
+  "x-afiStatus": "draft-non-implementation",
+  "x-afiPartOf": "AFI District 2 — Canonical Data & Provenance Boundary (D2 M1)",
+  "x-afiDoctrineRefs": [
+    "District 2 D-17 decision — authorizes D2 M1 only (afi-config schema drafts and tests)",
+    "District 2 hash doctrine — volatile processing timestamps are not canonical hash material; normalized evidence/domain timestamps are"
+  ],
+  "x-afiOpenItems": {
+    "CH-O1": "Canonicalization algorithm details behind canonicalizationVersion (key ordering, unicode normalization, number encoding) — OPEN; pinned by version string only.",
+    "CH-O2": "Domain tag registry (allowed domainTag values) — OPEN; only the structural pattern is fixed here."
+  },
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "algorithm",
+    "canonicalizationVersion",
+    "domainTag",
+    "value"
+  ],
+  "properties": {
+    "algorithm": {
+      "type": "string",
+      "description": "Hash algorithm for off-chain canonical domains. v1 fixes this to sha256. keccak256 is reserved for on-chain domains and is intentionally NOT representable here.",
+      "enum": ["sha256"]
+    },
+    "canonicalizationVersion": {
+      "type": "string",
+      "description": "Version pin of the canonical serialization rules the digest was computed over (e.g. 'afi.hash.v1'). Distinct from the schema version of the hashed object.",
+      "pattern": "^afi\\.hash\\.v[0-9]+$"
+    },
+    "domainTag": {
+      "type": "string",
+      "description": "Domain-separation tag naming the off-chain domain the digest belongs to (e.g. 'afi.d2.signal-input', 'afi.d2.enrichment-bundle', 'afi.d2.scored-output'). Prevents cross-domain hash reuse.",
+      "pattern": "^afi(\\.[a-z0-9-]+)+$"
+    },
+    "value": {
+      "type": "string",
+      "description": "The digest itself: 64 lowercase hex characters (SHA-256). Never a raw payload.",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "legacyHashRef": {
+      "type": "string",
+      "description": "OPTIONAL migration-compatibility pointer to a pre-District-2 hash value or reference (e.g. a USS v1.1 provenance.ingestHash). Non-authoritative; retained only so migrated records can be correlated.",
+      "minLength": 1
+    }
+  }
+}

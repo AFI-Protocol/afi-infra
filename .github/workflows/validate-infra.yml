@@ -60,3 +60,64 @@ jobs:
           fi
           echo "No secrets detected"
 
+  integration:
+    name: Integration (real MongoDB + governed-schema provenance)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout afi-infra
+        uses: actions/checkout@v4
+
+      # afi-config is PUBLIC; the pinned commit carries the governed contract.
+      - name: Checkout pinned afi-config (governed-schema source)
+        uses: actions/checkout@v4
+        with:
+          repository: AFI-Protocol/afi-config
+          ref: 78f18ce63c3675dd852780d6e04f2b4ebe92c90d
+          path: _afi-config
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      # Non-skipping byte-equality proof: every vendored governed schema file is
+      # identical to the pinned afi-config source (hard-fails on drift).
+      - name: Verify governed-schema provenance (byte-equality vs pinned afi-config)
+        run: node scripts/verify-governed-schema-provenance.mjs "${GITHUB_WORKSPACE}/_afi-config"
+
+      # Single-node replica set — required for the store's supersession transaction.
+      - name: Start MongoDB replica set
+        run: |
+          docker run -d --name mongo -p 27017:27017 mongo:7.0 --replSet rs0
+          echo "Waiting for mongod to accept connections..."
+          for i in $(seq 1 30); do
+            if docker exec mongo mongosh --quiet --eval 'db.runCommand({ ping: 1 })' >/dev/null 2>&1; then break; fi
+            sleep 2
+          done
+          docker exec mongo mongosh --quiet --eval 'rs.initiate({_id: "rs0", members: [{ _id: 0, host: "localhost:27017" }]})'
+          echo "Waiting for PRIMARY..."
+          for i in $(seq 1 30); do
+            state=$(docker exec mongo mongosh --quiet --eval 'try { rs.status().members[0].stateStr } catch (e) { "" }' 2>/dev/null || true)
+            if echo "$state" | grep -q PRIMARY; then echo "replica set ready"; break; fi
+            sleep 2
+          done
+
+      - name: Build
+        run: npm run build
+
+      # AFI_REQUIRE_* make the real-Mongo integration + drift/conformance tests
+      # MANDATORY here — a missing DB or missing source is a hard failure, never
+      # a silent skip.
+      - name: Run tests (real MongoDB + governed-schema drift — mandatory)
+        env:
+          AFI_EVIDENCE_MONGODB_URI: mongodb://localhost:27017/?replicaSet=rs0
+          AFI_CONFIG_REPO_DIR: ${{ github.workspace }}/_afi-config
+          AFI_REQUIRE_MONGO: '1'
+          AFI_REQUIRE_AFI_CONFIG: '1'
+        run: npm test
+

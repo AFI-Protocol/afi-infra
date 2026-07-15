@@ -1,0 +1,83 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://afi-protocol.org/schemas/provenance/v1/evidence-ref.schema.json",
+  "title": "AFI EvidenceRef v1 (District 2 M1 DRAFT)",
+  "description": "DRAFT / NON-IMPLEMENTATION reference to a piece of evidence backing a signal, enrichment lane, or provenance record. Hash-only by construction: an EvidenceRef carries identifiers, a CanonicalHash of the evidence payload, and normalized evidence/domain timestamps — it MUST NOT and structurally CANNOT require raw payload disclosure (additionalProperties:false, no payload field).",
+  "$comment": "Timestamps here (fetchedAt/asOf/postedAt/observedAt) are normalized evidence/domain timestamps per District 2 hash doctrine — they describe the evidence itself, not runtime processing, and are therefore admissible in canonical objects. Storage/runtime timestamps (createdAt, storedAt, processedAt, ...) are rejected by additionalProperties:false.",
+  "x-afiStatus": "draft-non-implementation",
+  "x-afiPartOf": "AFI District 2 — Canonical Data & Provenance Boundary (D2 M1)",
+  "x-afiDoctrineRefs": [
+    "District 2 D-17 decision — authorizes D2 M1 only (afi-config schema drafts and tests)"
+  ],
+  "x-afiOpenItems": {
+    "ER-O1": "Evidence id namespace/format — OPEN; opaque non-empty string in this draft.",
+    "ER-O2": "Redaction lifecycle beyond disclosed|redacted|withheld — OPEN."
+  },
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "evidenceId",
+    "sourceRef",
+    "evidenceHash"
+  ],
+  "properties": {
+    "evidenceId": {
+      "type": "string",
+      "description": "Stable unique identifier for this piece of evidence.",
+      "minLength": 1
+    },
+    "sourceRef": {
+      "type": "string",
+      "description": "Reference to the source the evidence came from (a sourceId as described by a SourceDisclosureProfile v1).",
+      "minLength": 1
+    },
+    "evidenceHash": {
+      "$ref": "canonical-hash.schema.json",
+      "description": "CanonicalHash v1 of the evidence payload. The payload itself stays off-object; only the digest is referenced."
+    },
+    "fetchedAt": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Normalized evidence timestamp: when the evidence was fetched from the source (ISO 8601), as supplied by the fetch record, not runtime wall-clock."
+    },
+    "asOf": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Normalized domain timestamp: the point in time the evidence content is valid for (e.g. candle close, statement date)."
+    },
+    "postedAt": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Normalized evidence timestamp: when the evidence was posted/published at its origin (e.g. message postedAt)."
+    },
+    "observedAt": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Normalized evidence timestamp: observation time of the underlying measurement, where distinct from fetch/post time."
+    },
+    "uri": {
+      "type": "string",
+      "format": "uri",
+      "description": "OPTIONAL pointer to the evidence payload (SHOULD be content-addressed so it is tamper-evident against evidenceHash). Never required — disclosure is governed by the source's SourceDisclosureProfile."
+    },
+    "mediaType": {
+      "type": "string",
+      "description": "OPTIONAL media/content type of the evidence payload (e.g. 'application/json', 'text/plain').",
+      "minLength": 1
+    },
+    "redactionStatus": {
+      "type": "string",
+      "description": "OPTIONAL redaction/withholding indicator for the evidence payload. 'disclosed' = payload retrievable; 'redacted' = partially removed; 'withheld' = payload not disclosed (hash-only).",
+      "enum": ["disclosed", "redacted", "withheld"]
+    },
+    "withheldReason": {
+      "type": "string",
+      "description": "OPTIONAL human-readable reason when redactionStatus is 'redacted' or 'withheld'.",
+      "minLength": 1
+    },
+    "notes": {
+      "type": "string",
+      "description": "OPTIONAL free-form provenance notes about this evidence reference."
+    }
+  }
+}

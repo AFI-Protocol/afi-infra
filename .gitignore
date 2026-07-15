@@ -1,3 +1,5 @@
 .DS_Store
 node_modules
 .env
+# CI-only checkout of the pinned afi-config source (governed-schema provenance)
+_afi-config/
