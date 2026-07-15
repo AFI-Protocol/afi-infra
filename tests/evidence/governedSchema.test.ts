@@ -26,6 +26,10 @@ const LOCAL_STATES = [
   "EPOCH_ELIGIBLE",
 ];
 
+// The RC-6 source discriminators the local UwrProfileStampSource union encodes —
+// the ONLY fixed vocabulary on the (otherwise analyst-neutral) profile stamp.
+const LOCAL_STAMP_SOURCES = ["builtin-value-identity", "registry-consumed"];
+
 const vendoredEvidenceSchema = JSON.parse(
   readFileSync(join(GOVERNED_SCHEMA_DIR, "scored-signal-evidence.schema.json"), "utf-8")
 );
@@ -47,6 +51,65 @@ describe("governed-schema validation (vendored contract)", () => {
       expect(valid).toBe(true);
       expect(checkIdentifierContinuity(rec)).toEqual([]);
     }
+  });
+});
+
+describe("scoring-profile stamp (PR-UWR-STAMP / RC-6)", () => {
+  it("local UwrProfileStampSource union matches the governed source enum", () => {
+    // Drift guard: the schema is authoritative for the ONLY fixed vocabulary.
+    expect(vendoredEvidenceSchema.properties.uwrProfile.properties.source.enum).toEqual(
+      LOCAL_STAMP_SOURCES
+    );
+  });
+
+  it("REQUIRES the stamp on every canonical evidence record", () => {
+    expect(vendoredEvidenceSchema.required).toContain("uwrProfile");
+    const { uwrProfile: _omitted, ...unstamped } = validBase() as any;
+    const { valid, errors } = validateEvidenceSchema(unstamped);
+    expect(valid).toBe(false);
+    expect(errors?.some((e: any) => e.params?.missingProperty === "uwrProfile")).toBe(true);
+  });
+
+  it("accepts BOTH governed sources and rejects an ungoverned one", () => {
+    for (const source of LOCAL_STAMP_SOURCES) {
+      const rec: any = validBase();
+      rec.uwrProfile.source = source;
+      expect(validateEvidenceSchema(rec).valid, source).toBe(true);
+    }
+    for (const bad of ["registry", "builtin", "unknown", ""]) {
+      const rec: any = validBase();
+      rec.uwrProfile.source = bad;
+      expect(validateEvidenceSchema(rec).valid, `source '${bad}'`).toBe(false);
+    }
+  });
+
+  it("rejects a stamp with missing source or malformed profile metadata", () => {
+    const noSource: any = validBase();
+    delete noSource.uwrProfile.source;
+    expect(validateEvidenceSchema(noSource).valid).toBe(false);
+    for (const field of ["profileId", "status", "decisionRef"]) {
+      const rec: any = validBase();
+      rec.uwrProfile[field] = "";
+      expect(validateEvidenceSchema(rec).valid, `empty ${field}`).toBe(false);
+    }
+  });
+
+  it("is analyst-/strategy-/profile-NEUTRAL: admits another analyst's conforming profile", () => {
+    const rec: any = validBase();
+    rec.analystId = "kestrel";
+    rec.strategyId = "mean_reversion_v2";
+    rec.scoredSignal.analystId = "kestrel";
+    rec.scoredSignal.strategyId = "mean_reversion_v2";
+    rec.uwrProfile = {
+      profileId: "kestrel-adaptive-lifts-v2.0",
+      status: "analyst-declared",
+      decisionRef: "analysts/kestrel/profiles/adaptive-lifts-v2.0.md",
+      source: "registry-consumed",
+    };
+    const { valid, errors } = validateEvidenceSchema(rec);
+    if (!valid) console.error(errors);
+    expect(valid).toBe(true);
+    expect(checkIdentifierContinuity(rec)).toEqual([]);
   });
 });
 

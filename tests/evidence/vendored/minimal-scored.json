@@ -7,6 +7,12 @@
   "canonicalizationVersion": "afi.hash.v1",
   "lifecycleState": "SCORED",
   "finalized": false,
+  "uwrProfile": {
+    "profileId": "uwr-weighted-lifts-v0.1",
+    "status": "testnet-provisional",
+    "decisionRef": "afi-governance/decisions/uwr-profile-pin-v0.1.md",
+    "source": "builtin-value-identity"
+  },
   "scoredSignal": {
     "schema": "afi.scored-signal.v1",
     "signalId": "sig-min-0001",

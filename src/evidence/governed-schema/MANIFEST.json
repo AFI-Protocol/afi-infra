@@ -1,12 +1,12 @@
 {
   "$comment": "Provenance of the vendored governed schema closure. Each vendored file is a byte-identical copy of afi-config@afiConfigCommit at afiConfigPath. Enforced by tests/evidence/governedSchemaProvenance.test.ts (always) and scripts/verify-governed-schema-provenance.mjs (CI, against a pinned checkout). Do not hand-edit; regenerate only from an owner-approved afi-config commit.",
   "afiConfigRepo": "https://github.com/AFI-Protocol/afi-config",
-  "afiConfigCommit": "78f18ce63c3675dd852780d6e04f2b4ebe92c90d",
+  "afiConfigCommit": "1d389443e0176b518913bfecbc1a41852cf7a306",
   "governedSchemaId": "https://afi-protocol.org/schemas/scored-signal-evidence/v1/scored-signal-evidence.schema.json",
   "sources": {
     "src/evidence/governed-schema/scored-signal-evidence.schema.json": {
       "afiConfigPath": "schemas/scored-signal-evidence/v1/scored-signal-evidence.schema.json",
-      "sha256": "52497eb6ce73bd8e0676a99875191522e8f053a6bcf0d2f13ab620a1b9a86736"
+      "sha256": "0f18db1e21117fe8afc8a9f0007c1b48f0f0c66d27f84584be7251b5e17d1a7e"
     },
     "src/evidence/governed-schema/canonical-hash.schema.json": {
       "afiConfigPath": "schemas/provenance/v1/canonical-hash.schema.json",
@@ -34,7 +34,7 @@
     },
     "tests/evidence/vendored/minimal-scored.json": {
       "afiConfigPath": "examples/scored-signal-evidence/v1/vectors/valid/minimal-scored.json",
-      "sha256": "27da7d1639f26f82ae64e316a7f1b3524eafb665ae09bfe4f2d9da463fd2c7bf"
+      "sha256": "4c1d687420c60582f1f4d72a28bd6ef1159865b9d3722e20b694201f1519af1f"
     }
   }
 }
