@@ -1,32 +1,55 @@
 {
   "name": "afi-infra",
   "version": "1.0.0",
-  "description": "Infrastructure services, TSSD vault clients, and shared schemas for AFI Protocol",
+  "description": "Infrastructure services, TSSD vault clients, and the canonical scored-signal evidence store for AFI Protocol",
   "type": "module",
+  "main": "./dist/evidence/index.js",
+  "types": "./dist/evidence/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/evidence/index.d.ts",
+      "import": "./dist/evidence/index.js"
+    },
+    "./evidence": {
+      "types": "./dist/evidence/index.d.ts",
+      "import": "./dist/evidence/index.js"
+    },
+    "./evidence/MongoScoredSignalEvidenceStore": {
+      "types": "./dist/evidence/MongoScoredSignalEvidenceStore.d.ts",
+      "import": "./dist/evidence/MongoScoredSignalEvidenceStore.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "dist/evidence"
+  ],
   "scripts": {
     "test": "vitest run",
     "test:watch": "vitest",
     "test:smoke": "vitest run --testNamePattern='smoke'",
     "test:dag": "vitest run --testNamePattern='DAG'",
-    "build": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "build": "tsc --noEmit && tsc -p tsconfig.build.json && node scripts/copy-runtime-assets.mjs",
+    "prepare": "npm run build",
+    "pack:dry": "npm pack --dry-run"
   },
   "keywords": [
     "afi",
     "infrastructure",
-    "templates"
+    "evidence-store"
   ],
   "author": "AFI Protocol",
   "license": "MIT",
   "devDependencies": {
     "@types/node": "^20.0.0",
+    "afi-core": "file:../afi-core",
     "typescript": "^5.3.0",
-    "vitest": "^1.0.0"
+    "vitest": "^1.0.0",
+    "zod": "^3.22.0"
   },
   "dependencies": {
-    "afi-core": "file:../afi-core",
     "ajv": "^8.12.0",
     "ajv-formats": "^3.0.1",
-    "mongodb": "^7.0.0",
-    "zod": "^3.22.0"
+    "mongodb": "^7.0.0"
   }
 }
