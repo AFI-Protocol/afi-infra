@@ -64,6 +64,40 @@ export interface ProvenanceRecord {
   [k: string]: unknown;
 }
 
+/**
+ * RC-6 source discriminator (PR-UWR-STAMP-SEMANTICS) — the ONLY fixed vocabulary
+ * on the stamp. Kept in sync with the governed schema enum by the drift-guard
+ * test; the schema is authoritative.
+ *
+ * - "builtin-value-identity": scoring ran the builtin config, value-identical to
+ *   the registered profile by construction; the registry was NOT read.
+ * - "registry-consumed": scoring ran the profile actually READ from the registry
+ *   and validated at runtime. Resolution is fail-closed, so a failed read refuses
+ *   to score — no record (and no stamp) can exist for a failed resolution.
+ */
+export type UwrProfileStampSource = "builtin-value-identity" | "registry-consumed";
+
+/**
+ * The scoring-profile stamp (PR-UWR-STAMP shape) carried by every canonical
+ * evidence record: identifies the UWR/scoring profile that ACTUALLY produced the
+ * score, plus its exact source/provenance.
+ *
+ * ANALYST-NEUTRAL: the governed contract fixes no analyst, strategy, or profile
+ * value — `profileId`/`status`/`decisionRef` are free-form non-empty strings and
+ * only `source` has a governed vocabulary. Traceability metadata only: it confers
+ * no qualification, reward eligibility, or mint wiring.
+ */
+export interface UwrProfileStamp {
+  /** Identifies the profile that produced the score (any conforming profile id). */
+  profileId: string;
+  /** The profile's declared governance/lifecycle status (no fixed vocabulary). */
+  status: string;
+  /** The reference that defines/pins that profile. */
+  decisionRef: string;
+  /** RC-6 provenance discriminator (the only governed vocabulary). */
+  source: UwrProfileStampSource;
+}
+
 /** The canonical scored-signal evidence record (`afi.scored-signal-evidence.v1`). */
 export interface ScoredSignalEvidenceRecord {
   schema: "afi.scored-signal-evidence.v1";
@@ -76,6 +110,8 @@ export interface ScoredSignalEvidenceRecord {
   finalized: boolean;
   scoredSignal: ScoredSignalProjection;
   provenanceRecord: ProvenanceRecord;
+  /** REQUIRED scoring-profile stamp (see UwrProfileStamp). */
+  uwrProfile: UwrProfileStamp;
   recordVersion?: number;
   supersedesRecordHash?: CanonicalHashRef;
 }
