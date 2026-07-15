@@ -1,0 +1,16 @@
+{
+  "//": "Packaging build (MONGO-STORE packaging follow-up): emit production JS +",
+  "//2": "declarations for the canonical evidence-store module ONLY, into dist/.",
+  "//3": "Store logic/schemas/tsconfig conventions are unchanged (extends ./tsconfig.json).",
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noEmit": false,
+    "declaration": true,
+    "declarationMap": false,
+    "sourceMap": false,
+    "outDir": "./dist",
+    "rootDir": "./src"
+  },
+  "include": ["src/evidence/**/*.ts"],
+  "exclude": ["node_modules", "dist", "**/*.test.ts", "**/__tests__/**"]
+}

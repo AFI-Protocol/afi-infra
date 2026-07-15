@@ -1,5 +1,8 @@
 .DS_Store
 node_modules
 .env
+# Emitted package build output (produced by `npm run build`)
+dist/
+*.tgz
 # CI-only checkout of the pinned afi-config source (governed-schema provenance)
 _afi-config/

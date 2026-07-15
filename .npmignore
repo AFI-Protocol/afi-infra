@@ -1,0 +1,18 @@
+# Packaging allowlist is enforced by package.json "files": ["dist/evidence"].
+# This .npmignore is present so npm does NOT fall back to .gitignore (which
+# ignores dist/) when computing the pack contents — only the compiled evidence
+# package + its schema assets ship, never source, tests, tooling, or configs.
+src/
+tests/
+schemas/
+scripts/
+infra/
+cli_templates/
+_afi-config/
+.github/
+*.test.ts
+tsconfig*.json
+vitest.config.ts
+.factory/
+codex/
+PATCH_SUMMARY.md
