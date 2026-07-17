@@ -1,7 +1,7 @@
 {
   "$comment": "Provenance of the vendored governed schema closure. Each vendored file is a byte-identical copy of afi-config@afiConfigCommit at afiConfigPath. Enforced by tests/evidence/governedSchemaProvenance.test.ts (always) and scripts/verify-governed-schema-provenance.mjs (CI, against a pinned checkout). Do not hand-edit; regenerate only from an owner-approved afi-config commit.",
   "afiConfigRepo": "https://github.com/AFI-Protocol/afi-config",
-  "afiConfigCommit": "e462c4e8bef5fda946ca19a826f5c53c6d202151",
+  "afiConfigCommit": "f91ce4465b9c54bc221ba82e7a468544ffcf3fe3",
   "governedSchemaIdV2": "https://afi-protocol.org/schemas/scored-signal-evidence/v2/scored-signal-evidence.schema.json",
   "sources": {
     "src/evidence/governed-schema/scored-signal-evidence.v2.schema.json": {
