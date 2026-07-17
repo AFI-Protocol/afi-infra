@@ -57,7 +57,7 @@ This repo has no dev server. Typical workflow:
 - `droids/` – Repo-scoped droid instructions and safety rails
 - `docs/` – Infra and TSSD docs (e.g., TSSD_VAULT_SPEC, TSSD_VAULT_CONSOLIDATION_PLAN.v0.1.md)
 
-**Consumed by**: afi-reactor, afi-core, afi-ops, afi-factory  
+**Consumed by**: afi-reactor, afi-core, afi-factory  
 **Depends on**: afi-config (schemas)
 
 ---
@@ -97,7 +97,7 @@ This repo has no dev server. Typical workflow:
 - Update tests for template validation
 
 **Forbidden**:
-- Treating this as canonical runtime infra (production infra lives in afi-ops)
+- Treating this as canonical runtime infra
 - Hardcoding secrets or real URLs in templates
 - Adding runtime logic that belongs in afi-core or afi-reactor
 - Breaking template contracts that other repos depend on
