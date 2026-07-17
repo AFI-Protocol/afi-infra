@@ -37,6 +37,8 @@ describe("vendored governed schema provenance (MANIFEST integrity)", () => {
     const covered = Object.keys(manifest.sources);
     [
       "scored-signal-evidence.schema.json",
+      "scored-signal-evidence.v2.schema.json",
+      "composition-ref.schema.json",
       "canonical-hash.schema.json",
       "evidence-ref.schema.json",
       "source-disclosure-profile.schema.json",
@@ -46,5 +48,9 @@ describe("vendored governed schema provenance (MANIFEST integrity)", () => {
     ].forEach((f) =>
       expect(covered).toContain(`src/evidence/governed-schema/${f}`)
     );
+  });
+
+  it("pins the enlarged FACTORY-CONTRACT closure at the authorizing afi-config commit", () => {
+    expect(manifest.afiConfigCommit).toBe("e462c4e8bef5fda946ca19a826f5c53c6d202151");
   });
 });

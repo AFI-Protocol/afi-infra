@@ -1,0 +1,86 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://afi-protocol.org/schemas/composition-ref/v1/composition-ref.schema.json",
+  "title": "AFI Composition Ref v1 (FACTORY-CONTRACT — canonical graph/composition provenance stamp)",
+  "description": "The canonical composition provenance stamp (afi.composition-ref.v1): the COMPLETE, hash-pinned identity of the composition that produced one scored signal — pipeline identity + canonical manifest hash, analyst-config hash, scorer plugin identity, the hash of the bound plugin-manifest set, the hash of the deterministic execution summary, and the hash of the enrichment bundle. Every field is REQUIRED and every hash is a CanonicalHash v1 ($ref ../provenance/v1/canonical-hash.schema.json): a v2 evidence record either carries the full composition provenance or does not exist. This realizes the reconciliation report's §9 N1 'canonical graph provenance' item as a dedicated referenced object (avoiding N5's strategyVersion overloading).",
+  "$comment": "BOUNDARY (FACTORY-CONTRACT): schema/contract only — NO hashing code, NO execution-summary format (the summary object itself is an operational artifact; ONLY its canonical hash is protocol material here, and it MUST be timestamp-free per District-2 hash doctrine). Hash computation follows schemas/hashing/canonical-json-hashing.v1.md; expected domain tags per field are recorded in the property descriptions and verified by tooling, not by this schema (CanonicalHash's domainTag registry is CH-O2 OPEN).",
+  "x-afiStatus": "governed-contract",
+  "x-afiPartOf": "AFI Factory — Analyst-Configurable Pipelines V1 (FACTORY-CONTRACT)",
+  "x-afiDoctrineRefs": [
+    "afi-governance/decisions/factory-configurable-pipelines-v1 — authorizes the canonical V1 contract family, including this composition provenance object and afi.scored-signal-evidence.v2 which requires it",
+    "reports/afi-configurable-dag-live-runtime-reconciliation.md §9 N1/N5 — canonical graph provenance on the evidence record requires a new schema version + decision; a dedicated composition object avoids binding composition-versioning semantics to strategyVersion",
+    "afi-governance/decisions/persistence-v0.1.md (MONGO-GOV) D-MONGO-9 — replay/verify sufficiency: the composition pins let a verifier reconstruct WHAT composed the score, deterministically",
+    "District 2 hash doctrine — volatile processing timestamps are not canonical hash material; the execution summary hashed here MUST be timestamp-free"
+  ],
+  "x-afiConstraints": {
+    "allOrNothing": "Every property is REQUIRED and additionalProperties is false: partial composition provenance is inadmissible. A submitter that cannot produce every pin MUST refuse to submit (fail closed) — there is no degraded stamp.",
+    "hashDomains": "TOOLING-VERIFIED expected domain tags: manifestHash afi.factory.pipeline-manifest; analystConfigHash afi.factory.analyst-config; pluginSetHash afi.factory.plugin-set; executionSummaryHash afi.reactor.execution-summary; enrichmentHash afi.d2.enrichment-bundle (the SAME domain the provenance-record's optional enrichmentHash uses). Domain-tag registry remains CH-O2 OPEN; these are the governed expectations for this object.",
+    "agreementWithConfig": "CROSS-ARTIFACT (tooling-enforced): pipelineId/pipelineVersion/manifestHash and scorerPluginId/scorerPluginVersion MUST equal the resolved analyst-strategy-config's pipelineRef and scorerRef; analystConfigHash MUST equal the registration's analystConfigHash. A divergence is a composition-integrity failure (refuse to submit).",
+    "timestampFreeSummary": "The execution summary hashed by executionSummaryHash MUST be timestamp-free and deterministic given the same run inputs (District 2 hash doctrine): node set executed, per-node plugin identities, degradation markers, join order-independence marker — never wall-clock durations."
+  },
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "pipelineId",
+    "pipelineVersion",
+    "manifestHash",
+    "analystConfigHash",
+    "scorerPluginId",
+    "scorerPluginVersion",
+    "pluginSetHash",
+    "executionSummaryHash",
+    "enrichmentHash"
+  ],
+  "properties": {
+    "schema": {
+      "type": "string",
+      "const": "afi.composition-ref.v1",
+      "description": "Schema-id version of the composition ref."
+    },
+    "pipelineId": {
+      "type": "string",
+      "pattern": "^[a-z0-9-]+$",
+      "minLength": 1,
+      "maxLength": 100,
+      "description": "pipelineId of the afi.pipeline.v1 manifest that composed this score."
+    },
+    "pipelineVersion": {
+      "type": "string",
+      "pattern": "^v\\d+\\.\\d+\\.\\d+$",
+      "description": "pipelineVersion of that manifest (WITH v prefix, matching the pipeline contract)."
+    },
+    "manifestHash": {
+      "$ref": "https://afi-protocol.org/schemas/provenance/v1/canonical-hash.schema.json",
+      "description": "CanonicalHash v1 of the executed pipeline manifest (domain tag afi.factory.pipeline-manifest; description/metadata excluded per canonical-json-hashing.v1)."
+    },
+    "analystConfigHash": {
+      "$ref": "https://afi-protocol.org/schemas/provenance/v1/canonical-hash.schema.json",
+      "description": "CanonicalHash v1 of the resolved afi.analyst-strategy-config.v1 (domain tag afi.factory.analyst-config; metadata excluded). MUST equal the registration's analystConfigHash."
+    },
+    "scorerPluginId": {
+      "type": "string",
+      "pattern": "^[a-z0-9-]+$",
+      "minLength": 1,
+      "maxLength": 100,
+      "description": "pluginId of the scorer plugin that produced the score (the pipeline's single scorer node binding)."
+    },
+    "scorerPluginVersion": {
+      "type": "string",
+      "pattern": "^(0|[1-9]\\d*)\\.(0|[1-9]\\d*)\\.(0|[1-9]\\d*)$",
+      "description": "pluginVersion of that scorer plugin (semver, no v prefix)."
+    },
+    "pluginSetHash": {
+      "$ref": "https://afi-protocol.org/schemas/provenance/v1/canonical-hash.schema.json",
+      "description": "CanonicalHash v1 over the canonically ordered set of ALL bound afi.analysis-plugin.v1 manifests of the executed composition (domain tag afi.factory.plugin-set; per-manifest description/metadata excluded)."
+    },
+    "executionSummaryHash": {
+      "$ref": "https://afi-protocol.org/schemas/provenance/v1/canonical-hash.schema.json",
+      "description": "CanonicalHash v1 of the deterministic, TIMESTAMP-FREE execution summary of this run (domain tag afi.reactor.execution-summary): nodes executed, degradations, join determinism marker (x-afiConstraints.timestampFreeSummary)."
+    },
+    "enrichmentHash": {
+      "$ref": "https://afi-protocol.org/schemas/provenance/v1/canonical-hash.schema.json",
+      "description": "CanonicalHash v1 of the enrichment bundle this run produced (domain tag afi.d2.enrichment-bundle — the SAME domain as the provenance-record's optional enrichmentHash, made mandatory at the composition layer)."
+    }
+  }
+}

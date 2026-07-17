@@ -5,7 +5,7 @@
 // external HTTP/API surface (that is ATLAS-GOV, out of scope).
 
 import type {
-  ScoredSignalEvidenceRecord,
+  AnyScoredSignalEvidenceRecord,
   SubmitResult,
   SupersedeResult,
   EvidenceReplayBundle,
@@ -14,7 +14,9 @@ import type {
 export interface IScoredSignalEvidenceStore {
   /**
    * The sole first-write mutation. Validates the complete record against the
-   * governed afi-config schema and identifier continuity, then performs an
+   * governed afi-config schema SELECTED BY ITS `schema` const (v1 or v2 —
+   * v1 acceptance is temporary dual-accept; any other value is rejected as
+   * SCHEMA_VALIDATION) and identifier continuity, then performs an
    * insert-if-absent keyed by the unique `signalId` (MONGO-GOV D-MONGO-6).
    *
    * - New `signalId` → `{ outcome: "inserted" }`.
@@ -26,7 +28,7 @@ export interface IScoredSignalEvidenceStore {
    * @throws EvidenceValidationError | EvidenceContinuityError |
    *         EvidenceIdempotencyConflictError | EvidencePersistenceError
    */
-  submit(record: ScoredSignalEvidenceRecord): Promise<SubmitResult>;
+  submit(record: AnyScoredSignalEvidenceRecord): Promise<SubmitResult>;
 
   /**
    * A governed correction (MONGO-GOV D-MONGO-5 versioning-by-supersession):
@@ -36,10 +38,10 @@ export interface IScoredSignalEvidenceStore {
    * @throws EvidenceValidationError | EvidenceContinuityError |
    *         EvidenceImmutableError | EvidenceSupersedeError | EvidencePersistenceError
    */
-  supersede(record: ScoredSignalEvidenceRecord): Promise<SupersedeResult>;
+  supersede(record: AnyScoredSignalEvidenceRecord): Promise<SupersedeResult>;
 
   /** Read-by-signalId (MONGO-GOV D-MONGO-9a): the current canonical record. */
-  getBySignalId(signalId: string): Promise<ScoredSignalEvidenceRecord | null>;
+  getBySignalId(signalId: string): Promise<AnyScoredSignalEvidenceRecord | null>;
 
   /**
    * Minimum replay-data retrieval (MONGO-GOV D-MONGO-9b): the projection +

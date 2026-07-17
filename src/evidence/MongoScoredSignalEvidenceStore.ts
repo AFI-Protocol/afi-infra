@@ -1,8 +1,14 @@
 // MongoDB implementation of the canonical scored-signal evidence store
 // (MONGO-STORE / Slot 2 of AFI-GOV-PERSISTENCE-IMPL-v0.1).
 //
-// Realizes MONGO-GOV: one FRESH canonical store (D-MONGO-1, Option A) for
-// `afi.scored-signal-evidence.v1`; the sole afi-infra storage mutation path
+// Realizes MONGO-GOV: one FRESH canonical store (D-MONGO-1, Option A) for the
+// governed evidence contract — `afi.scored-signal-evidence.v2` (the active
+// write contract, FACTORY-CONTRACT) plus `afi.scored-signal-evidence.v1`
+// (TEMPORARY dual-accept for cross-repo sequencing; removed by
+// SLOT-FCP-CLEANUP once afi-reactor emits v2 only). Validation dispatches on
+// each record's own `schema` const; ALL other store law (unique signalId,
+// append-once, idempotency, supersession, continuity, recordVersion) is
+// version-independent and unchanged. The sole afi-infra storage mutation path
 // (D-MONGO-3); a STANDARD collection with a UNIQUE `signalId` index (D-MONGO-6 —
 // NOT time-series, no non-unique fallback); append-once + immutable-after-
 // FINALIZED via versioning-by-supersession (D-MONGO-5); read-by-signalId +
@@ -29,12 +35,12 @@ import {
   EvidenceSupersedeError,
   EvidenceValidationError,
   EvidenceContinuityError,
+  type AnyScoredSignalEvidenceRecord,
   type EvidenceReplayBundle,
-  type ScoredSignalEvidenceRecord,
   type SubmitResult,
   type SupersedeResult,
 } from "./types.js";
-import { validateEvidenceSchema } from "./governedSchema.js";
+import { validateEvidenceSchema, validateEvidenceSchemaV2 } from "./governedSchema.js";
 import { checkIdentifierContinuity, isFinalized } from "./identifierContinuity.js";
 
 // --- Minimal structural MongoDB surface (injectable for testing) ------------
@@ -86,7 +92,7 @@ type Logger = {
 /** Stored document = the canonical record verbatim (byte-faithful for replay)
  *  plus Mongo's own `_id`. No volatile storage timestamps are added — the
  *  canonical record structurally excludes them (MONGO-GOV D-MONGO-1). */
-type EvidenceDocument = ScoredSignalEvidenceRecord & { _id?: unknown };
+type EvidenceDocument = AnyScoredSignalEvidenceRecord & { _id?: unknown };
 
 export interface MongoScoredSignalEvidenceStoreConfig {
   mongoUri?: string;
@@ -158,7 +164,7 @@ export class MongoScoredSignalEvidenceStore implements IScoredSignalEvidenceStor
     this.logger = config.logger ?? console;
   }
 
-  async submit(record: ScoredSignalEvidenceRecord): Promise<SubmitResult> {
+  async submit(record: AnyScoredSignalEvidenceRecord): Promise<SubmitResult> {
     this.assertGovernedRecord(record);
     // First-write invariant: the first canonical record for a signalId is
     // version 1 (MONGO-GOV D-MONGO-5). Higher versions arrive only via
@@ -207,7 +213,7 @@ export class MongoScoredSignalEvidenceStore implements IScoredSignalEvidenceStor
     }
   }
 
-  async supersede(record: ScoredSignalEvidenceRecord): Promise<SupersedeResult> {
+  async supersede(record: AnyScoredSignalEvidenceRecord): Promise<SupersedeResult> {
     this.assertGovernedRecord(record);
     await this.ensureInitialized();
 
@@ -291,7 +297,7 @@ export class MongoScoredSignalEvidenceStore implements IScoredSignalEvidenceStor
     return { outcome: "superseded", signalId, fromVersion, toVersion, record: canonical };
   }
 
-  async getBySignalId(signalId: string): Promise<ScoredSignalEvidenceRecord | null> {
+  async getBySignalId(signalId: string): Promise<AnyScoredSignalEvidenceRecord | null> {
     await this.ensureInitialized();
     let doc: EvidenceDocument | null;
     try {
@@ -309,12 +315,18 @@ export class MongoScoredSignalEvidenceStore implements IScoredSignalEvidenceStor
   async getReplayBundle(signalId: string): Promise<EvidenceReplayBundle | null> {
     const record = await this.getBySignalId(signalId);
     if (!record) return null;
-    return {
+    const bundle: EvidenceReplayBundle = {
       signalId: record.signalId,
       canonicalizationVersion: record.canonicalizationVersion,
       scoredSignal: record.scoredSignal,
       provenanceRecord: record.provenanceRecord,
     };
+    // v2 records extend replay/verify sufficiency (MONGO-GOV D-MONGO-9) with
+    // the hash-pinned composition ref; absent for v1 records.
+    if (record.schema === "afi.scored-signal-evidence.v2") {
+      bundle.composition = record.composition;
+    }
+    return bundle;
   }
 
   async close(): Promise<void> {
@@ -330,13 +342,36 @@ export class MongoScoredSignalEvidenceStore implements IScoredSignalEvidenceStor
 
   // --- internals ------------------------------------------------------------
 
-  /** Validate against the governed schema AND identifier continuity. Both are
-   *  admission preconditions (MONGO-GOV D-MONGO-3). */
-  private assertGovernedRecord(record: ScoredSignalEvidenceRecord): void {
-    const { valid, errors } = validateEvidenceSchema(record);
+  /** Validate against the governed schema SELECTED BY THE RECORD'S `schema`
+   *  const AND identifier continuity. Both are admission preconditions
+   *  (MONGO-GOV D-MONGO-3). Dispatch:
+   *  - 'afi.scored-signal-evidence.v1' → the governed v1 validator;
+   *  - 'afi.scored-signal-evidence.v2' → the governed v2 validator
+   *    (composition REQUIRED, validated against afi.composition-ref.v1
+   *    including its CanonicalHash sub-shapes);
+   *  - any other `schema` value → rejected as SCHEMA_VALIDATION. */
+  private assertGovernedRecord(record: AnyScoredSignalEvidenceRecord): void {
+    const schemaConst = (record as { schema?: unknown } | null)?.schema;
+    let valid: boolean;
+    let errors: unknown[];
+    if (schemaConst === "afi.scored-signal-evidence.v1") {
+      // TEMPORARY DUAL-ACCEPT for cross-repo sequencing — v1 acceptance is
+      // removed by SLOT-FCP-CLEANUP once afi-reactor emits v2 only.
+      ({ valid, errors } = validateEvidenceSchema(record));
+    } else if (schemaConst === "afi.scored-signal-evidence.v2") {
+      ({ valid, errors } = validateEvidenceSchemaV2(record));
+    } else {
+      throw new EvidenceValidationError(
+        `Record carries an unknown evidence schema const '${String(
+          schemaConst
+        )}' — admissible values are 'afi.scored-signal-evidence.v1' (temporary dual-accept) and 'afi.scored-signal-evidence.v2'.`,
+        [],
+        (record as { signalId?: string } | null)?.signalId
+      );
+    }
     if (!valid) {
       throw new EvidenceValidationError(
-        `Record failed governed afi.scored-signal-evidence.v1 schema validation.`,
+        `Record failed governed ${String(schemaConst)} schema validation.`,
         errors,
         record?.signalId
       );
@@ -353,18 +388,18 @@ export class MongoScoredSignalEvidenceStore implements IScoredSignalEvidenceStor
 
   /** Pin recordVersion (first canonical record is version 1) for a stable,
    *  order-insensitive idempotency comparison and history versioning. */
-  private normalize(record: ScoredSignalEvidenceRecord): ScoredSignalEvidenceRecord {
+  private normalize(record: AnyScoredSignalEvidenceRecord): AnyScoredSignalEvidenceRecord {
     return { ...record, recordVersion: record.recordVersion ?? 1 };
   }
 
-  private toDoc(record: ScoredSignalEvidenceRecord): EvidenceDocument {
+  private toDoc(record: AnyScoredSignalEvidenceRecord): EvidenceDocument {
     return { ...record };
   }
 
-  private fromDoc(doc: EvidenceDocument): ScoredSignalEvidenceRecord {
+  private fromDoc(doc: EvidenceDocument): AnyScoredSignalEvidenceRecord {
     const { _id, ...record } = doc;
     void _id;
-    return record as ScoredSignalEvidenceRecord;
+    return record as AnyScoredSignalEvidenceRecord;
   }
 
   /** Concurrency-safe, once-only initialization (memoized promise; cleared on
