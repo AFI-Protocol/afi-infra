@@ -1,9 +1,18 @@
 {
   "$comment": "Provenance of the vendored governed schema closure. Each vendored file is a byte-identical copy of afi-config@afiConfigCommit at afiConfigPath. Enforced by tests/evidence/governedSchemaProvenance.test.ts (always) and scripts/verify-governed-schema-provenance.mjs (CI, against a pinned checkout). Do not hand-edit; regenerate only from an owner-approved afi-config commit.",
   "afiConfigRepo": "https://github.com/AFI-Protocol/afi-config",
-  "afiConfigCommit": "1d389443e0176b518913bfecbc1a41852cf7a306",
+  "afiConfigCommit": "e462c4e8bef5fda946ca19a826f5c53c6d202151",
   "governedSchemaId": "https://afi-protocol.org/schemas/scored-signal-evidence/v1/scored-signal-evidence.schema.json",
+  "governedSchemaIdV2": "https://afi-protocol.org/schemas/scored-signal-evidence/v2/scored-signal-evidence.schema.json",
   "sources": {
+    "src/evidence/governed-schema/scored-signal-evidence.v2.schema.json": {
+      "afiConfigPath": "schemas/scored-signal-evidence/v2/scored-signal-evidence.schema.json",
+      "sha256": "a748163a0c3a19b3b58cd1aa4f30406a04e308354cc564fc57b119682b6eeebd"
+    },
+    "src/evidence/governed-schema/composition-ref.schema.json": {
+      "afiConfigPath": "schemas/composition-ref/v1/composition-ref.schema.json",
+      "sha256": "2622d3df832df6b6cbe7aa226e6a0fb9e31512b7b9a975a242d76e237f9e4da5"
+    },
     "src/evidence/governed-schema/scored-signal-evidence.schema.json": {
       "afiConfigPath": "schemas/scored-signal-evidence/v1/scored-signal-evidence.schema.json",
       "sha256": "0f18db1e21117fe8afc8a9f0007c1b48f0f0c66d27f84584be7251b5e17d1a7e"
@@ -35,6 +44,10 @@
     "tests/evidence/vendored/minimal-scored.json": {
       "afiConfigPath": "examples/scored-signal-evidence/v1/vectors/valid/minimal-scored.json",
       "sha256": "4c1d687420c60582f1f4d72a28bd6ef1159865b9d3722e20b694201f1519af1f"
+    },
+    "tests/evidence/vendored/minimal-scored.v2.json": {
+      "afiConfigPath": "examples/scored-signal-evidence/v2/vectors/valid/minimal-scored.json",
+      "sha256": "9b9013f08043790c66cae0a25b294c9a5dfe3fd6afc6e608ce874f6e263352df"
     }
   }
 }

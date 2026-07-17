@@ -1,0 +1,171 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://afi-protocol.org/schemas/scored-signal-evidence/v2/scored-signal-evidence.schema.json",
+  "title": "AFI ScoredSignalEvidence v2 (FACTORY-CONTRACT — canonical scored-signal evidence contract with composition provenance)",
+  "description": "The canonical scored-signal evidence record contract, v2. It is afi.scored-signal-evidence.v1 EXACTLY (same reused afi.scored-signal.v1 / afi.provenance-record.v1 / CanonicalHash shapes, same thirteen v1 properties, same lifecycle/finality binder) PLUS one new REQUIRED property: composition (afi.composition-ref.v1) — the complete, hash-pinned identity of the composition that produced the score. v2 SUPERSEDES v1 as the ACTIVE WRITE CONTRACT under decision factory-configurable-pipelines-v1; v1 remains the frozen prior version (no dual-write). It is a THIN, self-identifying evidence record keyed by the governed signalId (OBJ-GOV D-OBJ-1) that CARRIES BY REUSE the canonical afi.scored-signal.v1 projection (OBJ-GOV D-OBJ-5) and its afi.provenance-record.v1 (present per LIFE-GOV D-LIFE-6; replay/verify sufficiency per MONGO-GOV D-MONGO-9), the canonical strategy identity triple (OBJ-GOV D-OBJ-3), explicit schema/object versions (OBJ-GOV D-OBJ-6), and the minimum lifecycle/finality fields (LIFE-GOV D-LIFE-1/D-LIFE-4/D-LIFE-6, MONGO-GOV D-MONGO-5). It is NOT the heavy ReactorScoredSignalDocument and NOT the full VaultedSignalRecord lifecycle brain: runtime/storage baggage (rawUss, lenses, _priceFeedMetadata, rawPayload, volatile processing timestamps) and validator/minted/replayed/training/proprietary lifecycle-brain fields are structurally rejected (additionalProperties:false, and the reused sub-schemas are themselves additionalProperties:false).",
+  "$comment": "BOUNDARY: schema/contract only — NO storage engine, NO collection names, NO indexes, NO deployment topology, NO migration mechanics, NO API/endpoint. Store-layer requirements that JSON Schema cannot enforce (signalId uniqueness, append-once, immutable-after-FINALIZED, single-writer boundary, operational-vs-canonical separation) are recorded as governed contract constraints in x-afiConstraints and enforced by the accompanying contract-constraint tests, NOT by index/DDL here. Cross-object identifier continuity (top-level signalId == scoredSignal.signalId == provenanceRecord.signalId; strategy-triple agreement) also cannot be enforced by JSON Schema draft-07 and is a governed contract constraint (x-afiConstraints) verified by the drift-guard tests. SUPERSESSION: new canonical writes conform to v2; the store performs NO dual-write and NO v1 back-write — existing v1 records stand as frozen history under the v1 contract.",
+  "x-afiStatus": "governed-contract",
+  "x-afiPartOf": "AFI Factory — Analyst-Configurable Pipelines V1 (FACTORY-CONTRACT); supersedes MONGO-CONTRACT's afi.scored-signal-evidence.v1 as the active write contract",
+  "x-afiDoctrineRefs": [
+    "afi-governance/decisions/factory-configurable-pipelines-v1 — authorizes afi.scored-signal-evidence.v2 (v1 + required composition provenance) as the active write contract; v1 stays frozen (no dual-write). Realizes the reconciliation report's §9 N1 via a new schema version, per the v1 change-control rule ('any shape change requires a new governance decision and a new schema version')",
+    "afi-governance/decisions/persistence-impl-v0.1.md (MONGO-IMPL) Slot 1 — authorized the v1 contract this version copies exactly; boundary is schema/contract only",
+    "afi-governance/decisions/persistence-v0.1.md (MONGO-GOV) D-MONGO-1 — one canonical scored-signal evidence store & its self-identifying persisted shape",
+    "afi-governance/decisions/persistence-v0.1.md (MONGO-GOV) D-MONGO-2 — afi-config owns the canonical persisted-record schema contract",
+    "afi-governance/decisions/persistence-v0.1.md (MONGO-GOV) D-MONGO-5 — write-once/append-only per signalId; immutable-after-FINALIZED; versioning by supersession",
+    "afi-governance/decisions/persistence-v0.1.md (MONGO-GOV) D-MONGO-6 — signalId uniqueness/idempotency at the store layer",
+    "afi-governance/decisions/persistence-v0.1.md (MONGO-GOV) D-MONGO-9 — replay/verify sufficiency data guarantees on the record; the composition pins extend this to WHAT composed the score",
+    "afi-governance/decisions/object-identity-v0.1.md (OBJ-GOV) D-OBJ-1 — signalId canonical end-to-end join key",
+    "afi-governance/decisions/object-identity-v0.1.md (OBJ-GOV) D-OBJ-3 — canonical strategy triple analystId + strategyId + strategyVersion",
+    "afi-governance/decisions/object-identity-v0.1.md (OBJ-GOV) D-OBJ-5 — canonical Scored Signal representation = thin afi.scored-signal.v1 projection",
+    "afi-governance/decisions/object-identity-v0.1.md (OBJ-GOV) D-OBJ-6 — two-axis versioning (schema-id const + distinct canonicalizationVersion)",
+    "afi-governance/decisions/lifecycle-v0.1.md (LIFE-GOV) D-LIFE-1 — one canonical lifecycle state machine",
+    "afi-governance/decisions/lifecycle-v0.1.md (LIFE-GOV) D-LIFE-4 — single finality writer; FINALIZED is a lifecycle-finality event (not settlement finality)",
+    "afi-governance/decisions/lifecycle-v0.1.md (LIFE-GOV) D-LIFE-5 — identifier continuity: every lifecycle record keyed on signalId + carries the strategy triple + references afi.scored-signal.v1",
+    "afi-governance/decisions/lifecycle-v0.1.md (LIFE-GOV) D-LIFE-6 — pre-persistence handoff: VALIDATED + SCORED (afi.scored-signal.v1 projection AND its ProvenanceRecord) + identifier continuity before entry into this store",
+    "afi-governance/decisions/uwr-profile-pin-v0.1.md (PR-UWR-STAMP) UP-2/UP-5 — the scoring-profile stamp SHAPE (profileId + status + decisionRef) this record reuses verbatim. Stamping is traceability metadata only: it does NOT wire the qualification gate (UP-9), create reward eligibility, or promote production scoring law (§6). This contract fixes no analyst, strategy, or profile value: UP-10 profile RECOGNITION scopes which profile a given implementation may stamp, and is an implementation/runtime property — it is NOT an admission rule of this analyst-neutral contract.",
+    "afi-governance/decisions/uwr-runtime-consumption-v0.1.md (PR-UWR-STAMP-SEMANTICS) RC-4/RC-5/RC-6 — the stamp's source discriminator values (builtin-value-identity | registry-consumed), reused EXACTLY; fail-closed runtime resolution (a failed/invalid profile resolution refuses to score, so no record exists to stamp); and RC-6's reserved meaning for an ABSENT source (identifies the pre-program era). No new stamp semantics are introduced here."
+  ],
+  "x-afiConstraints": {
+    "storeUniqueness": "STORE-LAYER (not JSON-Schema-enforceable): the canonical evidence store MUST enforce signalId uniqueness on the single CURRENT canonical record per signalId (MONGO-GOV D-MONGO-6 — unique constraint / insert-if-absent). Re-ingesting the same signalId MUST NOT create a duplicate canonical record. The store type MUST support a unique signalId constraint (i.e. a standard collection, NOT time-series). This contract fixes signalId as the idempotency key; the index/DDL/collection is MONGO-STORE, not this schema.",
+    "appendOnceImmutableAfterFinalized": "STORE-LAYER (not JSON-Schema-enforceable): the record is write-once/append-only per signalId (MONGO-GOV D-MONGO-5). One CURRENT record per signalId; a governed correction SUPERSEDES the current record with a new schema-versioned record (recordVersion increments; superseded versions retained immutably as history). Once lifecycleState reaches FINALIZED, the record is immutable (finalized === true marks this). Immutability here is STORAGE custody, NOT settlement finality (CHAIN-GOV).",
+    "singleWriterBoundary": "STORE-LAYER (not JSON-Schema-enforceable): only the afi-infra canonical persistence interface may write this record (MONGO-GOV D-MONGO-3). Reactor and Gateway are SUBMITTERS, not writers. A record is admissible only when it carries the afi.scored-signal.v1 projection + provenance linkage + signalId continuity and satisfies the LIFE-GOV D-LIFE-6 handoff. This contract does not define that interface (ATLAS-GOV / MONGO-STORE), only the shape it transports.",
+    "operationalVsCanonical": "This record is CANONICAL evidence only (MONGO-GOV D-MONGO-4). Raw/unscored ingestion, intermediate/DAG state, retry/dead-letter, replay inputs, dedupe caches, and telemetry are OPERATIONAL stores and MUST NOT be represented by this contract. The composition ref carries HASH PINS of composition artifacts — never the artifacts, traces, or intermediate payloads themselves.",
+    "identifierContinuity": "CROSS-OBJECT (not JSON-Schema-draft-07-enforceable): the top-level signalId MUST equal scoredSignal.signalId AND provenanceRecord.signalId (OBJ-GOV D-OBJ-1, LIFE-GOV D-LIFE-5). The top-level strategy triple (analystId, strategyId, strategyVersion) — all three REQUIRED-present on this evidence record — MUST equal the scoredSignal triple (OBJ-GOV D-OBJ-3). The top-level canonicalizationVersion MUST equal provenanceRecord.canonicalizationVersion (OBJ-GOV D-OBJ-6). Enforced by the drift-guard contract tests.",
+    "uwrProfileStamp": "SCORING-PROFILE STAMP, RUNTIME-LAYER (not JSON-Schema-enforceable): the uwrProfile stamp reuses the already-governed PR-UWR-STAMP shape and the PR-UWR-STAMP-SEMANTICS RC-6 source discriminator VERBATIM — this contract adds no stamp semantics, redesigns no UWR, changes no profile value, and does not reopen UP-8/UP-9. The runtime submitter MUST: (a) stamp the profile that ACTUALLY produced the score — never a profile it did not run; (b) build `source` from the provenance the composition path ACTUALLY resolved, propagated explicitly — never re-derived at the stamp site, never read from the environment (RC-6); (c) fail closed — if the profile it was configured to run cannot be resolved/validated, it must refuse to score, so no evidence record and no stamp exist for a failed resolution (RC-4 realizes this for the registry-backed profile). This contract is ANALYST-/STRATEGY-/PROFILE-NEUTRAL and binds no record to any one analyst identity or profile: which profiles a given implementation can emit, and which identities it recognizes, are properties of that implementation's pipeline/runtime — not admission rules of this contract. Enforced by the submitter's runtime guardrails, not by this schema.",
+    "replaySufficiency": "The record is structured for deterministic off-line replay/verify (MONGO-GOV D-MONGO-9): it carries the afi.scored-signal.v1 projection AND the afi.provenance-record.v1, which supplies AT MINIMUM the input + output CanonicalHash digests (required by that shape), plus the enrichment digest and replay pins where present (optional on the reused shape). v2 EXTENDS the guarantee with the required composition ref: a verifier can additionally pin WHAT composed the score (manifest, analyst config, plugin set, execution summary, enrichment bundle) by canonical hash. Tightening replay-pin cardinality on the reused provenance shape remains deferred WITH the full afi.provenance-record.v1 canonical shape (OBJ-GOV D-OBJ-6; not re-decided here). This is a data guarantee on the record — NOT a read/replay endpoint (ATLAS-GOV).",
+    "compositionBinding": "COMPOSITION PROVENANCE (v2's one addition): composition is REQUIRED on every v2 record — a record whose composition provenance cannot be fully produced MUST NOT be written (fail closed; afi.composition-ref.v1 is itself all-or-nothing). CROSS-OBJECT agreements (tooling/submitter-enforced, not JSON-Schema-enforceable): composition.analystConfigHash MUST equal the resolved registration's analystConfigHash; composition.enrichmentHash MUST equal provenanceRecord.enrichmentHash when that optional field is present; the scorer plugin identified by composition MUST be the one that actually produced scoredSignal. SUPERSESSION: v2 is the ACTIVE WRITE CONTRACT; v1 is frozen prior history — no dual-write, no v1 back-write."
+  },
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "signalId",
+    "analystId",
+    "strategyId",
+    "strategyVersion",
+    "canonicalizationVersion",
+    "lifecycleState",
+    "finalized",
+    "scoredSignal",
+    "provenanceRecord",
+    "uwrProfile",
+    "composition"
+  ],
+  "properties": {
+    "schema": {
+      "type": "string",
+      "const": "afi.scored-signal-evidence.v2",
+      "description": "Schema-id version of the evidence record (OBJ-GOV D-OBJ-6 axis (a)). v2 = v1 + required composition provenance. Versions the RECORD shape, distinct from canonicalizationVersion."
+    },
+    "signalId": {
+      "type": "string",
+      "minLength": 1,
+      "description": "The canonical join key (OBJ-GOV D-OBJ-1): stable, opaque, assigned once at the USS ingest boundary, threaded verbatim, immutable. This is the store idempotency key (MONGO-GOV D-MONGO-6). MUST equal scoredSignal.signalId and provenanceRecord.signalId (identifier continuity, LIFE-GOV D-LIFE-5)."
+    },
+    "analystId": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Canonical strategy triple member (OBJ-GOV D-OBJ-3): the analyst, kept orthogonal to strategyId, never folded into it. MUST equal scoredSignal.analystId."
+    },
+    "strategyId": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Canonical strategy triple member (OBJ-GOV D-OBJ-3): the strategy identifier (bare snake_case slug with embedded major-version token; must not embed the analyst name). MUST equal scoredSignal.strategyId. This contract fixes NO strategy value/format beyond OBJ-GOV D-OBJ-3; production scoring law is untouched."
+    },
+    "strategyVersion": {
+      "type": "string",
+      "minLength": 1,
+      "description": "REQUIRED canonical strategy triple member (OBJ-GOV D-OBJ-3): finer semver-without-v-prefix version, separate from strategyId. The canonical evidence record MUST carry the COMPLETE canonical strategy identity triple (analystId + strategyId + strategyVersion), so this field is required on the evidence contract even though D-OBJ-3 leaves it optional at the general object-identity level and the reused afi.scored-signal.v1 projection keeps it optional. MUST equal scoredSignal.strategyVersion (identifier continuity). Format is unchanged from D-OBJ-3 (non-binding, illustrative semver e.g. 1.0.0); this is a presence requirement on the evidence record, not a redefinition of the governed format or of the projection's own optionality."
+    },
+    "canonicalizationVersion": {
+      "type": "string",
+      "pattern": "^afi\\.hash\\.v[0-9]+$",
+      "description": "Two-axis versioning axis (b) (OBJ-GOV D-OBJ-6): the canonical-serialization rules version, held DISTINCT from the schema-id. MUST agree with provenanceRecord.canonicalizationVersion (enforced as a governed identifier-continuity constraint; see x-afiConstraints.identifierContinuity); the canonicalizationVersion inside each contained CanonicalHash is expected to match by the same doctrine. This field pins the version only; hash/serialization rules are District-2 / CHAIN-GOV doctrine, not set here."
+    },
+    "lifecycleState": {
+      "type": "string",
+      "description": "The canonical LIFE-GOV lifecycle state (D-LIFE-1) of this signal, as a lifecycle attribute of the evidence record (LIFE-GOV D-LIFE-5). Restricted to the PERSISTABLE states: a record only exists post-scoring (LIFE-GOV D-LIFE-6 handoff requires VALIDATED + SCORED), so pre-scoring states (INGESTED, VALIDATED, SCHEMA_REJECTED) are NOT admissible here. Shipped tier-4 vocabularies (afi-mint pending/minted, afi-infra RAW/ENRICHED/ANALYZED/SCORED-caps/MINTED/REPLAYED, decay_pass/challenge_open/voting_complete) are NOT this canonical set. Mint/settlement states are CHAIN-GOV, beyond EPOCH_ELIGIBLE, and not representable here.",
+      "enum": [
+        "SCORED",
+        "CERTIFIED",
+        "DECERTIFIED",
+        "QUALIFIED",
+        "UNQUALIFIED",
+        "CHALLENGE_OPEN",
+        "CONTESTED",
+        "FINALIZED",
+        "FINAL_REJECTED",
+        "EPOCH_ELIGIBLE"
+      ]
+    },
+    "finalized": {
+      "type": "boolean",
+      "description": "The immutable-after-FINALIZED marker (MONGO-GOV D-MONGO-5). MUST be true iff lifecycleState is a finalization-phase-or-later state (FINALIZED, FINAL_REJECTED, EPOCH_ELIGIBLE) — bound structurally by if/then/else below. Marks storage-custody immutability (append-once, supersede-only), NOT on-chain settlement finality (CHAIN-GOV). FINALIZED/FINAL_REJECTED are written only by the LIFE-GOV finality writer (D-LIFE-4); this contract records the marker, it does not name or wire that writer."
+    },
+    "scoredSignal": {
+      "$ref": "https://afi-protocol.org/schemas/provenance/v1/scored-signal.schema.json",
+      "description": "The canonical thin afi.scored-signal.v1 projection (OBJ-GOV D-OBJ-5), carried BY REUSE of the governed schema (not redefined). Its additionalProperties:false structurally forbids substituting the heavy ReactorScoredSignalDocument (rawUss/lenses/_priceFeedMetadata/rawPayload) for the thin projection."
+    },
+    "provenanceRecord": {
+      "$ref": "https://afi-protocol.org/schemas/provenance/v1/provenance-record.schema.json",
+      "description": "The afi.provenance-record.v1 required PRESENT by LIFE-GOV D-LIFE-6, carried BY REUSE of the governed schema. Supplies the input/enrichment/output CanonicalHash digests + replay pins for MONGO-GOV D-MONGO-9 replay/verify sufficiency. Its full canonical shape remains a deferred afi-config schema (OBJ-GOV D-OBJ-6 fixes only its versioning/continuity-linkage role); this contract reuses the existing District-2 draft shape and does not re-decide it."
+    },
+    "uwrProfile": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["profileId", "status", "decisionRef", "source"],
+      "description": "REQUIRED scoring-profile stamp: identifies the UWR/scoring profile that ACTUALLY produced this score, and — via `source` — its exact provenance, using the already-governed discriminator semantics (PR-UWR-STAMP, uwr-profile-pin-v0.1.md §7; source discriminator per PR-UWR-STAMP-SEMANTICS RC-6). The stamp shape and the `source` values are reused VERBATIM; no new stamp semantics are defined here. Traceability metadata ONLY: it does NOT indicate qualification, reward eligibility, or mint wiring — each remains separately authorized (UP-9/§6). REQUIRED on every newly created canonical evidence record: the canonical store is FRESH (MONGO-GOV D-MONGO-1, Option A) and holds no pre-program records, so it carries no compatibility obligation to accept a newly written UNSTAMPED record. ANALYST-/STRATEGY-/PROFILE-NEUTRAL: this contract fixes NO analyst, strategy, or profile value. Any AFI-conforming profile may be stamped, provided the profile is identified and its source is one of the governed discriminator values. Which profiles a given implementation can actually emit is an implementation/runtime property — NOT a restriction of this protocol contract, and no bespoke governance decision is required merely for an analyst to configure and run a conforming strategy. Governance remains required for protocol-wide canonical defaults, registry admission rules, reward eligibility, production scoring law, and economic effects — none of which this stamp confers.",
+      "properties": {
+        "profileId": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Identifies the UWR/scoring profile that ACTUALLY produced this score (UP-2 stamp shape), e.g. \"uwr-weighted-lifts-v0.1\" — illustrative only. ANALYST-NEUTRAL: this contract fixes NO profile value and imposes no format beyond non-empty; any AFI-conforming profile id is admissible. Which profile ids a given implementation can emit is an implementation/runtime property, not a restriction of this contract."
+        },
+        "status": {
+          "type": "string",
+          "minLength": 1,
+          "description": "The declared governance/lifecycle status of the stamped profile (e.g. \"testnet-provisional\"), recorded so persisted records self-describe. ANALYST-NEUTRAL: this contract requires the field to be present and well-formed but fixes NO status vocabulary — it does not pin any one profile's current status as the only admissible value. Which statuses are meaningful is a property of the stamped profile, not of this record contract."
+        },
+        "decisionRef": {
+          "type": "string",
+          "minLength": 1,
+          "description": "The defining reference for the stamped profile — the document that specifies/pins it (e.g. \"afi-governance/decisions/uwr-profile-pin-v0.1.md\", illustrative only). Part of the reused stamp shape, kept for provenance traceability. ANALYST-NEUTRAL: this contract fixes no value and does NOT require a bespoke AFI governance decision for a profile to be stampable — a conforming profile supplies whatever reference defines it. Governance remains required for protocol-wide canonical defaults, registry admission rules, reward eligibility, production scoring law, and economic effects — none of which this field confers."
+        },
+        "source": {
+          "enum": ["builtin-value-identity", "registry-consumed"],
+          "description": "REQUIRED RC-6 source discriminator (PR-UWR-STAMP-SEMANTICS), reusing the governed values EXACTLY. \"builtin-value-identity\": scoring ran afi-core's builtin defaultUwrConfig — value-identical to the registered profile by construction (UP-2/UP-5) — and the registry was NOT read. \"registry-consumed\": scoring ran the profile actually READ from the afi-config registry and validated under the RC-5 identity predicate. Runtime resolution is fail-closed (RC-4): a failed/invalid registry read refuses to score, so no evidence record — and no stamp — can exist for a failed resolution. REQUIRED here because RC-6 reserves an ABSENT source to identify the PRE-PROGRAM era: this fresh canonical store contains no pre-program records, so a newly written stamp without a source would masquerade as pre-program and is rejected. (The pre-program allowance remains governed for reading historical records in the demoted legacy stores — it is not relevant to what this store admits.)"
+        }
+      }
+    },
+    "composition": {
+      "$ref": "https://afi-protocol.org/schemas/composition-ref/v1/composition-ref.schema.json",
+      "description": "REQUIRED composition provenance (v2's one addition over v1): the complete, hash-pinned identity of the composition that produced this score — pipeline manifest, analyst config, scorer plugin, plugin set, execution summary, enrichment bundle — carried BY REUSE of afi.composition-ref.v1 (all fields required there; all-or-nothing). A record whose composition provenance cannot be fully produced MUST NOT be written (x-afiConstraints.compositionBinding)."
+    },
+    "recordVersion": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "OPTIONAL supersession counter for versioning-by-supersession (MONGO-GOV D-MONGO-5). The first canonical record for a signalId is version 1 (omission means 1); a governed correction supersedes with an incremented recordVersion and a new schema-versioned record. Never an in-place edit; never relaxes the one-current-record-per-signalId invariant."
+    },
+    "supersedesRecordHash": {
+      "$ref": "https://afi-protocol.org/schemas/provenance/v1/canonical-hash.schema.json",
+      "description": "OPTIONAL CanonicalHash link to the immediately-superseded canonical evidence record (MONGO-GOV D-MONGO-5 supersession chain). Present only when recordVersion > 1; the superseded record is retained immutably as history."
+    }
+  },
+  "if": {
+    "properties": {
+      "lifecycleState": {
+        "enum": ["FINALIZED", "FINAL_REJECTED", "EPOCH_ELIGIBLE"]
+      }
+    }
+  },
+  "then": {
+    "properties": {
+      "finalized": { "const": true }
+    }
+  },
+  "else": {
+    "properties": {
+      "finalized": { "const": false }
+    }
+  }
+}
