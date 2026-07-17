@@ -14,8 +14,8 @@ import type {
 export interface IScoredSignalEvidenceStore {
   /**
    * The sole first-write mutation. Validates the complete record against the
-   * governed afi-config schema SELECTED BY ITS `schema` const (v1 or v2 —
-   * v1 acceptance is temporary dual-accept; any other value is rejected as
+   * governed afi-config schema (`afi.scored-signal-evidence.v2` is the ONLY
+   * admissible `schema` const; any other value is rejected as
    * SCHEMA_VALIDATION) and identifier continuity, then performs an
    * insert-if-absent keyed by the unique `signalId` (MONGO-GOV D-MONGO-6).
    *

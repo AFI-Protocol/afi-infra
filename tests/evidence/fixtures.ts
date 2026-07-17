@@ -6,35 +6,19 @@
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 import { existsSync, readFileSync } from "node:fs";
-import type {
-  ScoredSignalEvidenceRecord,
-  ScoredSignalEvidenceRecordV2,
-} from "../../src/evidence/types.js";
+import type { ScoredSignalEvidenceRecordV2 } from "../../src/evidence/types.js";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 
-/** A valid non-finalized governed v1 record (vendored copy of afi-config's
- *  minimal-scored vector). SCORED, finalized:false, recordVersion absent. */
-export function validBase(): ScoredSignalEvidenceRecord {
-  return JSON.parse(readFileSync(join(HERE, "vendored/minimal-scored.json"), "utf-8"));
-}
-
-/** Same record advanced to a FINALIZED state (finalized:true) — schema-valid
- *  by the contract's if/then finalized binding. Used for immutability tests. */
-export function finalizedBase(): ScoredSignalEvidenceRecord {
-  const r = validBase();
-  r.lifecycleState = "FINALIZED";
-  r.finalized = true;
-  return r;
-}
-
 /** A valid non-finalized governed v2 record (vendored copy of afi-config's v2
- *  minimal-scored vector — carries the REQUIRED composition ref). */
+ *  minimal-scored vector — carries the REQUIRED composition ref). SCORED,
+ *  finalized:false, recordVersion absent. */
 export function validBaseV2(): ScoredSignalEvidenceRecordV2 {
   return JSON.parse(readFileSync(join(HERE, "vendored/minimal-scored.v2.json"), "utf-8"));
 }
 
-/** The v2 base advanced to a FINALIZED state (finalized:true). */
+/** The v2 base advanced to a FINALIZED state (finalized:true) — schema-valid
+ *  by the contract's if/then finalized binding. Used for immutability tests. */
 export function finalizedBaseV2(): ScoredSignalEvidenceRecordV2 {
   const r = validBaseV2();
   r.lifecycleState = "FINALIZED";
@@ -58,13 +42,3 @@ export const afiConfigRoot: string | null = (() => {
 })();
 
 export const afiConfigAvailable = afiConfigRoot !== null;
-
-const EX_DIR = afiConfigRoot
-  ? join(afiConfigRoot, "examples/scored-signal-evidence/v1")
-  : null;
-
-/** Load a governed example/vector from the afi-config sibling repo. */
-export function loadAfiConfigExample<T = unknown>(rel: string): T {
-  if (!EX_DIR) throw new Error("afi-config sibling repo not available");
-  return JSON.parse(readFileSync(join(EX_DIR, rel), "utf-8")) as T;
-}

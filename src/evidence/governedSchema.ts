@@ -1,9 +1,9 @@
 // Governed-schema validation for the canonical scored-signal evidence record.
 //
 // Validates the COMPLETE evidence record against the governed JSON Schema —
-// `afi.scored-signal-evidence.v1` (MONGO-GOV D-MONGO-1/D-MONGO-2) or
-// `afi.scored-signal-evidence.v2` (FACTORY-CONTRACT, decision
-// factory-configurable-pipelines-v1: v1 + REQUIRED composition provenance,
+// `afi.scored-signal-evidence.v2` (MONGO-GOV D-MONGO-1/D-MONGO-2 as amended by
+// FACTORY-CONTRACT, decision factory-configurable-pipelines-v1: the base
+// evidence contract + REQUIRED composition provenance,
 // afi.composition-ref.v1). afi-infra is
 // a deployable service that (like CI) does not have the afi-config repo on its
 // path, so the governed schemas + their District-2 $ref closure are VENDORED
@@ -25,7 +25,6 @@ function loadSchemaJson(fileName: string): Record<string, unknown> {
   return JSON.parse(readFileSync(join(SCHEMA_DIR, fileName), "utf-8"));
 }
 
-const EVIDENCE_SCHEMA_FILE = "scored-signal-evidence.schema.json";
 const EVIDENCE_SCHEMA_FILE_V2 = "scored-signal-evidence.v2.schema.json";
 const COMPOSITION_REF_SCHEMA_FILE = "composition-ref.schema.json";
 /** The reused District-2 shapes the evidence schemas $ref (closure), preloaded
@@ -60,19 +59,11 @@ function newGovernedAjv(): Ajv {
   return ajv;
 }
 
-let compiled: ValidateFunction | undefined;
 let compiledV2: ValidateFunction | undefined;
 
-/** Compile (once) the governed v1 evidence validator. */
-export function getEvidenceValidator(): ValidateFunction {
-  if (compiled) return compiled;
-  compiled = newGovernedAjv().compile(loadSchemaJson(EVIDENCE_SCHEMA_FILE));
-  return compiled;
-}
-
-/** Compile (once) the governed v2 evidence validator (v1 + REQUIRED
- *  composition, validated against afi.composition-ref.v1 including its
- *  CanonicalHash sub-shapes). */
+/** Compile (once) the governed v2 evidence validator (REQUIRED composition,
+ *  validated against afi.composition-ref.v1 including its CanonicalHash
+ *  sub-shapes). */
 export function getEvidenceValidatorV2(): ValidateFunction {
   if (compiledV2) return compiledV2;
   const ajv = newGovernedAjv();
@@ -86,13 +77,6 @@ export interface SchemaValidationResult {
   errors: unknown[];
 }
 
-/** Validate a candidate object against the governed v1 evidence schema. */
-export function validateEvidenceSchema(candidate: unknown): SchemaValidationResult {
-  const validate = getEvidenceValidator();
-  const valid = validate(candidate) as boolean;
-  return { valid, errors: valid ? [] : [...(validate.errors ?? [])] };
-}
-
 /** Validate a candidate object against the governed v2 evidence schema
  *  (composition REQUIRED; afi.composition-ref.v1 all-or-nothing). */
 export function validateEvidenceSchemaV2(candidate: unknown): SchemaValidationResult {
@@ -103,20 +87,17 @@ export function validateEvidenceSchemaV2(candidate: unknown): SchemaValidationRe
 
 /** Directory holding the vendored governed schema files (for the drift guard). */
 export const GOVERNED_SCHEMA_DIR = SCHEMA_DIR;
-/** Vendored governed schema file names (evidence contracts + $ref closure). */
+/** Vendored governed schema file names (evidence contract + $ref closure). */
 export const GOVERNED_SCHEMA_FILES = [
-  EVIDENCE_SCHEMA_FILE,
   EVIDENCE_SCHEMA_FILE_V2,
   COMPOSITION_REF_SCHEMA_FILE,
   ...DEP_SCHEMA_FILES,
 ];
 
-/** The governed v1 schema's `$id`, for provenance/audit surfaces. */
-export const GOVERNED_EVIDENCE_SCHEMA_ID =
-  "https://afi-protocol.org/schemas/scored-signal-evidence/v1/scored-signal-evidence.schema.json";
 /** The governed v2 schema's `$id`, for provenance/audit surfaces. */
 export const GOVERNED_EVIDENCE_SCHEMA_ID_V2 =
   "https://afi-protocol.org/schemas/scored-signal-evidence/v2/scored-signal-evidence.schema.json";
-/** The governed composition-ref schema's `$id` (v2's one new $ref reachable). */
+/** The governed composition-ref schema's `$id` (the evidence contract's
+ *  composition $ref). */
 export const GOVERNED_COMPOSITION_REF_SCHEMA_ID =
   "https://afi-protocol.org/schemas/composition-ref/v1/composition-ref.schema.json";

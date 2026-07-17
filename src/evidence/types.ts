@@ -1,8 +1,10 @@
 // Canonical Scored-Signal Evidence — types & typed error taxonomy (MONGO-STORE / Slot 2)
 //
-// Consumes the governed afi-config contract `afi.scored-signal-evidence.v1`
-// (afi-config/schemas/scored-signal-evidence/v1/) — the single canonical
-// scored-signal evidence record designated by MONGO-GOV D-MONGO-1. These TS
+// Consumes the governed afi-config contract `afi.scored-signal-evidence.v2`
+// (afi-config/schemas/scored-signal-evidence/v2/) — the single canonical
+// scored-signal evidence record designated by MONGO-GOV D-MONGO-1 and made the
+// active write contract by FACTORY-CONTRACT (decision
+// factory-configurable-pipelines-v1). These TS
 // types are ergonomic mirrors; the AUTHORITATIVE structural check is validation
 // against the governed JSON Schema (see governedSchema.ts). This module decides
 // NO object-identity/lifecycle semantics — it consumes OBJ-GOV/LIFE-GOV/
@@ -98,24 +100,6 @@ export interface UwrProfileStamp {
   source: UwrProfileStampSource;
 }
 
-/** The canonical scored-signal evidence record (`afi.scored-signal-evidence.v1`). */
-export interface ScoredSignalEvidenceRecord {
-  schema: "afi.scored-signal-evidence.v1";
-  signalId: string;
-  analystId: string;
-  strategyId: string;
-  strategyVersion: string;
-  canonicalizationVersion: string;
-  lifecycleState: EvidenceLifecycleState;
-  finalized: boolean;
-  scoredSignal: ScoredSignalProjection;
-  provenanceRecord: ProvenanceRecord;
-  /** REQUIRED scoring-profile stamp (see UwrProfileStamp). */
-  uwrProfile: UwrProfileStamp;
-  recordVersion?: number;
-  supersedesRecordHash?: CanonicalHashRef;
-}
-
 /**
  * The canonical composition provenance stamp (`afi.composition-ref.v1`,
  * FACTORY-CONTRACT): the COMPLETE, hash-pinned identity of the composition that
@@ -146,34 +130,43 @@ export interface CompositionRefV1 {
   enrichmentHash: CanonicalHashRef;
 }
 
-/** The canonical scored-signal evidence record, v2
- *  (`afi.scored-signal-evidence.v2`, FACTORY-CONTRACT): v1 EXACTLY plus one new
- *  REQUIRED property — `composition` (afi.composition-ref.v1). */
-export interface ScoredSignalEvidenceRecordV2
-  extends Omit<ScoredSignalEvidenceRecord, "schema"> {
+/** The canonical scored-signal evidence record
+ *  (`afi.scored-signal-evidence.v2`, FACTORY-CONTRACT): the governed base
+ *  evidence properties plus the REQUIRED `composition` provenance stamp. */
+export interface ScoredSignalEvidenceRecordV2 {
   schema: "afi.scored-signal-evidence.v2";
-  /** REQUIRED composition provenance (v2's one addition over v1). */
+  signalId: string;
+  analystId: string;
+  strategyId: string;
+  strategyVersion: string;
+  canonicalizationVersion: string;
+  lifecycleState: EvidenceLifecycleState;
+  finalized: boolean;
+  scoredSignal: ScoredSignalProjection;
+  provenanceRecord: ProvenanceRecord;
+  /** REQUIRED scoring-profile stamp (see UwrProfileStamp). */
+  uwrProfile: UwrProfileStamp;
+  /** REQUIRED composition provenance (afi.composition-ref.v1). */
   composition: CompositionRefV1;
+  recordVersion?: number;
+  supersedesRecordHash?: CanonicalHashRef;
 }
 
-/** Any admissible canonical evidence record. v1 admission is TEMPORARY (dual-
- *  accept for cross-repo sequencing); v2 is the active write contract. */
-export type AnyScoredSignalEvidenceRecord =
-  | ScoredSignalEvidenceRecord
-  | ScoredSignalEvidenceRecordV2;
+/** Any admissible canonical evidence record — `afi.scored-signal-evidence.v2`
+ *  is the ONLY accepted write contract. */
+export type AnyScoredSignalEvidenceRecord = ScoredSignalEvidenceRecordV2;
 
 /** Minimum replay-data bundle (MONGO-GOV D-MONGO-9): read-by-signalId returns
  *  the projection + provenance record (input/enrichment/output digests + pins)
- *  sufficient to deterministically replay/verify off-line. For v2 records it
- *  ALSO carries the composition ref (WHAT composed the score, hash-pinned);
- *  absent for v1 records. NOT an endpoint. */
+ *  PLUS the hash-pinned composition ref (WHAT composed the score), sufficient
+ *  to deterministically replay/verify off-line. NOT an endpoint. */
 export interface EvidenceReplayBundle {
   signalId: string;
   canonicalizationVersion: string;
   scoredSignal: ScoredSignalProjection;
   provenanceRecord: ProvenanceRecord;
-  /** Present iff the current canonical record is a v2 record. */
-  composition?: CompositionRefV1;
+  /** The composition ref of the current canonical record. */
+  composition: CompositionRefV1;
 }
 
 export type SubmitOutcome = "inserted" | "idempotent-duplicate";
