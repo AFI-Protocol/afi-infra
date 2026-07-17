@@ -27,7 +27,6 @@
 
 ## What Does NOT Belong Here
 
-❌ Deployment scripts (→ `afi-ops`)
 ❌ Application code (→ `afi-core`, `afi-reactor`)
 ❌ Smart contracts (→ `afi-token`)
 ❌ Documentation (→ `afi-docs`)
@@ -63,7 +62,6 @@ Factory.ai droids can contribute:
 
 ## Related Repositories
 
-- **afi-ops** - Deployment and operations toolkit
 - **afi-reactor** - DAG orchestrator (infrastructure consumer)
 - **afi-core** - Core runtime (infrastructure consumer)
 

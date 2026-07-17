@@ -25,7 +25,6 @@ Infrastructure scaffolding, shared schemas, and T.S.S.D. Vault services/tests. C
 - ✅ CLI helpers used for infra/TSSD smoke testing
 
 **This repo does NOT handle**:
-- ❌ Deployment scripts (that's afi-ops)
 - ❌ Application code (that's afi-core, afi-reactor)
 - ❌ Smart contracts (that's afi-token)
 
