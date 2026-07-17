@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { FakeMongoClient } from "./fakeMongo.js";
-import { validBase, finalizedBase, deepClone } from "./fixtures.js";
+import { validBase, finalizedBase, validBaseV2, finalizedBaseV2, deepClone } from "./fixtures.js";
 import { MongoScoredSignalEvidenceStore } from "../../src/evidence/MongoScoredSignalEvidenceStore.js";
 import {
   EvidenceValidationError,
@@ -320,6 +320,168 @@ describe("MongoScoredSignalEvidenceStore (MONGO-STORE / Slot 2)", () => {
       const { store } = makeStore();
       expect(await store.getBySignalId("nope")).toBeNull();
       expect(await store.getReplayBundle("nope")).toBeNull();
+    });
+  });
+
+  describe("v2 records (afi.scored-signal-evidence.v2 — FACTORY-CONTRACT)", () => {
+    it("submits a valid v2 record (schema-const dispatch) and reads it back", async () => {
+      const { store } = makeStore();
+      const rec = validBaseV2();
+
+      const res = await store.submit(rec);
+      expect(res.outcome).toBe("inserted");
+      expect(res.recordVersion).toBe(1);
+
+      const fetched = await store.getBySignalId(rec.signalId);
+      expect(fetched?.schema).toBe("afi.scored-signal-evidence.v2");
+      expect(
+        fetched && "composition" in fetched ? fetched.composition.schema : undefined
+      ).toBe("afi.composition-ref.v1");
+    });
+
+    it("rejects a v2 record WITHOUT composition (SCHEMA_VALIDATION, fail closed)", async () => {
+      const { store } = makeStore();
+      const { composition: _omitted, ...noComposition } = validBaseV2() as any;
+      await expect(store.submit(noComposition)).rejects.toBeInstanceOf(EvidenceValidationError);
+      await expect(store.submit(noComposition)).rejects.toMatchObject({ code: "SCHEMA_VALIDATION" });
+    });
+
+    it("rejects a v2 record with malformed composition hashes (SCHEMA_VALIDATION)", async () => {
+      const { store } = makeStore();
+      const malformed: Array<[string, (r: any) => void]> = [
+        ["non-hex manifestHash value", (r) => { r.composition.manifestHash.value = "zz-not-hex"; }],
+        ["truncated pluginSetHash value", (r) => { r.composition.pluginSetHash.value = "abc123"; }],
+        ["missing executionSummaryHash", (r) => { delete r.composition.executionSummaryHash; }],
+        ["bad enrichmentHash domainTag", (r) => { r.composition.enrichmentHash.domainTag = "NOT A TAG"; }],
+      ];
+      for (const [label, mutate] of malformed) {
+        const bad: any = validBaseV2();
+        mutate(bad);
+        await expect(store.submit(bad), label).rejects.toBeInstanceOf(EvidenceValidationError);
+        await expect(store.submit(bad), label).rejects.toMatchObject({ code: "SCHEMA_VALIDATION" });
+      }
+    });
+
+    it("rejects any UNKNOWN evidence schema const (SCHEMA_VALIDATION)", async () => {
+      const { store } = makeStore();
+      for (const bogus of ["afi.scored-signal-evidence.v3", "afi.scored-signal.v1", "", undefined]) {
+        const bad: any = validBaseV2();
+        bad.schema = bogus;
+        if (bogus === undefined) delete bad.schema;
+        await expect(store.submit(bad), String(bogus)).rejects.toBeInstanceOf(EvidenceValidationError);
+        await expect(store.submit(bad), String(bogus)).rejects.toMatchObject({ code: "SCHEMA_VALIDATION" });
+      }
+    });
+
+    it("enforces identifier continuity IDENTICALLY on v2 records", async () => {
+      const { store } = makeStore();
+      const continuityBreaks: Array<[string, (r: any) => void]> = [
+        ["signalId != scoredSignal.signalId", (r) => { r.scoredSignal.signalId = `${r.signalId}-x`; }],
+        ["signalId != provenanceRecord.signalId", (r) => { r.provenanceRecord.signalId = `${r.signalId}-x`; }],
+        ["strategyId != scoredSignal.strategyId", (r) => { r.scoredSignal.strategyId = "other_strategy_v1"; }],
+        ["canonicalizationVersion != provenanceRecord's", (r) => { r.canonicalizationVersion = "afi.hash.v2"; }],
+      ];
+      for (const [label, mutate] of continuityBreaks) {
+        const bad: any = validBaseV2();
+        mutate(bad);
+        await expect(store.submit(bad), label).rejects.toBeInstanceOf(EvidenceContinuityError);
+      }
+    });
+
+    it("treats a byte-identical v2 re-submission as idempotent; different content conflicts", async () => {
+      const { db, store } = makeStore();
+      const rec = validBaseV2();
+
+      const first = await store.submit(rec);
+      const second = await store.submit(deepClone(rec));
+      expect(first.outcome).toBe("inserted");
+      expect(second.outcome).toBe("idempotent-duplicate");
+      expect(db._collection(COLLECTION)._allDocs()).toHaveLength(1);
+
+      const conflicting = deepClone(rec);
+      conflicting.scoredSignal.uwrScore = 0.99;
+      await expect(store.submit(conflicting)).rejects.toBeInstanceOf(EvidenceIdempotencyConflictError);
+      expect(db._collection(COLLECTION)._allDocs()).toHaveLength(1);
+    });
+
+    it("supersedes a v2 record transactionally, archiving v1-of-the-chain to history", async () => {
+      const { db, store } = makeStore();
+      const first = validBaseV2();
+      await store.submit(first);
+
+      const next = deepClone(first);
+      next.recordVersion = 2;
+      next.supersedesRecordHash = PRED_HASH;
+      next.scoredSignal.uwrScore = 0.61;
+
+      const res = await store.supersede(next);
+      expect(res.outcome).toBe("superseded");
+      expect(res.fromVersion).toBe(1);
+      expect(res.toVersion).toBe(2);
+
+      const current = await store.getBySignalId(first.signalId);
+      expect(current?.recordVersion).toBe(2);
+      expect(current?.schema).toBe("afi.scored-signal-evidence.v2");
+      expect(db._collection(HISTORY)._allDocs()).toHaveLength(1);
+    });
+
+    it("refuses to supersede a FINALIZED v2 record (immutable-after-FINALIZED)", async () => {
+      const { store } = makeStore();
+      await store.submit(finalizedBaseV2());
+      const attempt = deepClone(finalizedBaseV2());
+      attempt.recordVersion = 2;
+      attempt.supersedesRecordHash = PRED_HASH;
+      await expect(store.supersede(attempt)).rejects.toBeInstanceOf(EvidenceImmutableError);
+    });
+
+    it("rejects a v2 first-write with recordVersion > 1 (recordVersion enforcement)", async () => {
+      const { store } = makeStore();
+      const bad = deepClone(validBaseV2());
+      bad.recordVersion = 2;
+      bad.supersedesRecordHash = PRED_HASH;
+      await expect(store.submit(bad)).rejects.toBeInstanceOf(EvidenceSupersedeError);
+    });
+
+    it("replay bundle CARRIES composition for v2 records and OMITS it for v1", async () => {
+      const { store } = makeStore();
+      const v2rec = validBaseV2();
+      await store.submit(v2rec);
+
+      const v2bundle = await store.getReplayBundle(v2rec.signalId);
+      expect(v2bundle?.composition).toEqual(v2rec.composition);
+      expect(v2bundle?.scoredSignal.schema).toBe("afi.scored-signal.v1");
+      expect(v2bundle?.provenanceRecord.inputHash).toBeTruthy();
+
+      const v1rec = validBase();
+      v1rec.signalId = `${v1rec.signalId}-v1side`;
+      v1rec.scoredSignal.signalId = v1rec.signalId;
+      v1rec.provenanceRecord.signalId = v1rec.signalId;
+      await store.submit(v1rec);
+
+      const v1bundle = await store.getReplayBundle(v1rec.signalId);
+      expect(v1bundle).not.toBeNull();
+      expect(v1bundle && "composition" in v1bundle && v1bundle.composition !== undefined).toBe(false);
+    });
+  });
+
+  // Tagged for SLOT-FCP-CLEANUP: this block (and the store's v1 validation
+  // branch) is removed once afi-reactor emits v2 only.
+  describe("TEMPORARY-DUAL-ACCEPT (v1 records still admissible during cross-repo sequencing)", () => {
+    it("still accepts a valid v1 record byte-for-byte (existing behavior unchanged)", async () => {
+      const { store } = makeStore();
+      const rec = validBase();
+      const res = await store.submit(rec);
+      expect(res.outcome).toBe("inserted");
+      const fetched = await store.getBySignalId(rec.signalId);
+      expect(fetched?.schema).toBe("afi.scored-signal-evidence.v1");
+      expect(fetched && "composition" in fetched).toBe(false);
+    });
+
+    it("still rejects a v1 record carrying composition (v1 shape is frozen)", async () => {
+      const { store } = makeStore();
+      const bad: any = validBase();
+      bad.composition = validBaseV2().composition;
+      await expect(store.submit(bad)).rejects.toBeInstanceOf(EvidenceValidationError);
     });
   });
 });

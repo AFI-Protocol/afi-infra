@@ -3,13 +3,23 @@ import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import {
   validateEvidenceSchema,
+  validateEvidenceSchemaV2,
   GOVERNED_EVIDENCE_SCHEMA_ID,
+  GOVERNED_EVIDENCE_SCHEMA_ID_V2,
+  GOVERNED_COMPOSITION_REF_SCHEMA_ID,
   GOVERNED_SCHEMA_DIR,
   GOVERNED_SCHEMA_FILES,
 } from "../../src/evidence/governedSchema.js";
 import { checkIdentifierContinuity } from "../../src/evidence/identifierContinuity.js";
 import { FINALIZED_STATES } from "../../src/evidence/types.js";
-import { validBase, finalizedBase, afiConfigAvailable, afiConfigRoot } from "./fixtures.js";
+import {
+  validBase,
+  finalizedBase,
+  validBaseV2,
+  finalizedBaseV2,
+  afiConfigAvailable,
+  afiConfigRoot,
+} from "./fixtures.js";
 import type { ScoredSignalEvidenceRecord } from "../../src/evidence/types.js";
 
 // The 10 persistable canonical LIFE-GOV states the local type union encodes.
@@ -51,6 +61,76 @@ describe("governed-schema validation (vendored contract)", () => {
       expect(valid).toBe(true);
       expect(checkIdentifierContinuity(rec)).toEqual([]);
     }
+  });
+});
+
+const vendoredEvidenceSchemaV2 = JSON.parse(
+  readFileSync(join(GOVERNED_SCHEMA_DIR, "scored-signal-evidence.v2.schema.json"), "utf-8")
+);
+const vendoredCompositionRefSchema = JSON.parse(
+  readFileSync(join(GOVERNED_SCHEMA_DIR, "composition-ref.schema.json"), "utf-8")
+);
+
+describe("governed-schema validation v2 (vendored FACTORY-CONTRACT)", () => {
+  it("validates against the governed v2 + composition-ref schema $ids", () => {
+    expect(vendoredEvidenceSchemaV2.$id).toBe(GOVERNED_EVIDENCE_SCHEMA_ID_V2);
+    expect(vendoredCompositionRefSchema.$id).toBe(GOVERNED_COMPOSITION_REF_SCHEMA_ID);
+  });
+
+  it("v2 = v1 + REQUIRED composition ($ref afi.composition-ref.v1)", () => {
+    expect(vendoredEvidenceSchemaV2.required).toContain("composition");
+    expect(vendoredEvidenceSchemaV2.properties.composition.$ref).toBe(
+      GOVERNED_COMPOSITION_REF_SCHEMA_ID
+    );
+    // the thirteen v1 properties are all still present
+    Object.keys(vendoredEvidenceSchema.properties).forEach((p) =>
+      expect(Object.keys(vendoredEvidenceSchemaV2.properties)).toContain(p)
+    );
+    expect(vendoredEvidenceSchemaV2.properties.lifecycleState.enum).toEqual(LOCAL_STATES);
+  });
+
+  it("accepts the vendored v2 base and a derived FINALIZED v2 record", () => {
+    for (const rec of [validBaseV2(), finalizedBaseV2()]) {
+      const { valid, errors } = validateEvidenceSchemaV2(rec);
+      if (!valid) console.error(errors);
+      expect(valid).toBe(true);
+      expect(checkIdentifierContinuity(rec)).toEqual([]);
+    }
+  });
+
+  it("REJECTS a v2 record without composition (fail closed, all-or-nothing)", () => {
+    const { composition: _omitted, ...noComposition } = validBaseV2() as any;
+    const { valid, errors } = validateEvidenceSchemaV2(noComposition);
+    expect(valid).toBe(false);
+    expect(errors?.some((e: any) => e.params?.missingProperty === "composition")).toBe(true);
+  });
+
+  it("REJECTS partial composition provenance (missing hash pin)", () => {
+    const rec: any = validBaseV2();
+    delete rec.composition.executionSummaryHash;
+    expect(validateEvidenceSchemaV2(rec).valid).toBe(false);
+  });
+
+  it("REJECTS malformed canonical-hash sub-shapes inside composition", () => {
+    const cases: Array<[string, (r: any) => void]> = [
+      ["non-hex hash value", (r) => { r.composition.manifestHash.value = "not-a-hash"; }],
+      ["truncated hash value", (r) => { r.composition.pluginSetHash.value = "abc123"; }],
+      ["bad domainTag pattern", (r) => { r.composition.enrichmentHash.domainTag = "Enrichment Bundle!"; }],
+      ["missing algorithm", (r) => { delete r.composition.analystConfigHash.algorithm; }],
+      ["bad canonicalizationVersion", (r) => { r.composition.executionSummaryHash.canonicalizationVersion = "v1"; }],
+    ];
+    for (const [label, mutate] of cases) {
+      const rec: any = validBaseV2();
+      mutate(rec);
+      expect(validateEvidenceSchemaV2(rec).valid, label).toBe(false);
+    }
+  });
+
+  it("REJECTS a v1 schema const under the v2 validator and vice versa", () => {
+    const v1AsV2: any = validBase();
+    expect(validateEvidenceSchemaV2(v1AsV2).valid).toBe(false);
+    const v2AsV1: any = validBaseV2();
+    expect(validateEvidenceSchema(v2AsV1).valid).toBe(false);
   });
 });
 
@@ -113,12 +193,18 @@ describe("scoring-profile stamp (PR-UWR-STAMP / RC-6)", () => {
   });
 });
 
-// afi-config source paths for each vendored schema file.
+// afi-config source paths for each vendored schema file (the ENLARGED closure:
+// v1 + v2 evidence contracts, composition-ref, and the shared provenance deps).
+const AFI_CONFIG_SOURCE_REL: Record<string, string> = {
+  "scored-signal-evidence.schema.json":
+    "scored-signal-evidence/v1/scored-signal-evidence.schema.json",
+  "scored-signal-evidence.v2.schema.json":
+    "scored-signal-evidence/v2/scored-signal-evidence.schema.json",
+  "composition-ref.schema.json": "composition-ref/v1/composition-ref.schema.json",
+};
 function afiConfigSourceFor(file: string): string {
-  const sub = file === "scored-signal-evidence.schema.json"
-    ? "scored-signal-evidence/v1"
-    : "provenance/v1";
-  return join(afiConfigRoot as string, "schemas", sub, file);
+  const rel = AFI_CONFIG_SOURCE_REL[file] ?? `provenance/v1/${file}`;
+  return join(afiConfigRoot as string, "schemas", rel);
 }
 
 // In CI, AFI_REQUIRE_AFI_CONFIG=1 turns a missing afi-config source into a HARD
@@ -174,6 +260,41 @@ describe.skipIf(!afiConfigAvailable)("drift guard vs the afi-config source", () 
     for (const f of readdirSync(invDir)) {
       const rec = JSON.parse(readFileSync(join(invDir, f), "utf-8")) as ScoredSignalEvidenceRecord;
       const schemaValid = validateEvidenceSchema(rec).valid;
+      const continuous = schemaValid && checkIdentifierContinuity(rec).length === 0;
+      expect(schemaValid && continuous, `${f} should be inadmissible`).toBe(false);
+    }
+  });
+
+  it("the vendored v2 minimal-scored fixture is byte-identical to afi-config", () => {
+    const vendored = readFileSync(
+      new URL("./vendored/minimal-scored.v2.json", import.meta.url),
+      "utf-8"
+    );
+    const source = readFileSync(
+      join(afiConfigRoot as string, "examples/scored-signal-evidence/v2/vectors/valid/minimal-scored.json"),
+      "utf-8"
+    );
+    expect(vendored).toBe(source);
+  });
+
+  it("classifies every governed v2 valid vector as admissible (v2 validator)", () => {
+    const exDir = join(afiConfigRoot as string, "examples/scored-signal-evidence/v2");
+    const validFiles = [
+      "scored-signal-evidence.example.json",
+      ...readdirSync(join(exDir, "vectors/valid")).map((f) => `vectors/valid/${f}`),
+    ];
+    for (const rel of validFiles) {
+      const rec = JSON.parse(readFileSync(join(exDir, rel), "utf-8"));
+      expect(validateEvidenceSchemaV2(rec).valid, rel).toBe(true);
+      expect(checkIdentifierContinuity(rec), rel).toEqual([]);
+    }
+  });
+
+  it("rejects every governed v2 invalid vector (schema OR continuity, v2 validator)", () => {
+    const invDir = join(afiConfigRoot as string, "examples/scored-signal-evidence/v2/vectors/invalid");
+    for (const f of readdirSync(invDir)) {
+      const rec = JSON.parse(readFileSync(join(invDir, f), "utf-8"));
+      const schemaValid = validateEvidenceSchemaV2(rec).valid;
       const continuous = schemaValid && checkIdentifierContinuity(rec).length === 0;
       expect(schemaValid && continuous, `${f} should be inadmissible`).toBe(false);
     }

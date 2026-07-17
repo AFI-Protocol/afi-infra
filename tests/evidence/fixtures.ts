@@ -6,11 +6,14 @@
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 import { existsSync, readFileSync } from "node:fs";
-import type { ScoredSignalEvidenceRecord } from "../../src/evidence/types.js";
+import type {
+  ScoredSignalEvidenceRecord,
+  ScoredSignalEvidenceRecordV2,
+} from "../../src/evidence/types.js";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 
-/** A valid non-finalized governed record (vendored copy of afi-config's
+/** A valid non-finalized governed v1 record (vendored copy of afi-config's
  *  minimal-scored vector). SCORED, finalized:false, recordVersion absent. */
 export function validBase(): ScoredSignalEvidenceRecord {
   return JSON.parse(readFileSync(join(HERE, "vendored/minimal-scored.json"), "utf-8"));
@@ -20,6 +23,20 @@ export function validBase(): ScoredSignalEvidenceRecord {
  *  by the contract's if/then finalized binding. Used for immutability tests. */
 export function finalizedBase(): ScoredSignalEvidenceRecord {
   const r = validBase();
+  r.lifecycleState = "FINALIZED";
+  r.finalized = true;
+  return r;
+}
+
+/** A valid non-finalized governed v2 record (vendored copy of afi-config's v2
+ *  minimal-scored vector — carries the REQUIRED composition ref). */
+export function validBaseV2(): ScoredSignalEvidenceRecordV2 {
+  return JSON.parse(readFileSync(join(HERE, "vendored/minimal-scored.v2.json"), "utf-8"));
+}
+
+/** The v2 base advanced to a FINALIZED state (finalized:true). */
+export function finalizedBaseV2(): ScoredSignalEvidenceRecordV2 {
+  const r = validBaseV2();
   r.lifecycleState = "FINALIZED";
   r.finalized = true;
   return r;

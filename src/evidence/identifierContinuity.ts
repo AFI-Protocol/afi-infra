@@ -6,14 +6,15 @@
 
 import {
   FINALIZED_STATES,
-  type ScoredSignalEvidenceRecord,
+  type AnyScoredSignalEvidenceRecord,
 } from "./types.js";
 
 /** Returns the list of identifier-continuity violations (empty === continuous).
  *  Operates structurally so it is safe to run before/independently of schema
- *  validation. */
+ *  validation. Applies IDENTICALLY to v1 and v2 records — v2 adds only the
+ *  `composition` property, which carries no continuity-bound identifiers. */
 export function checkIdentifierContinuity(
-  record: ScoredSignalEvidenceRecord
+  record: AnyScoredSignalEvidenceRecord
 ): string[] {
   const v: string[] = [];
   const ss = record.scoredSignal;
@@ -44,6 +45,6 @@ export function checkIdentifierContinuity(
 
 /** Whether the record's lifecycleState carries the immutable-after-FINALIZED
  *  marker (MONGO-GOV D-MONGO-5 / LIFE-GOV D-LIFE-4). */
-export function isFinalized(record: ScoredSignalEvidenceRecord): boolean {
+export function isFinalized(record: AnyScoredSignalEvidenceRecord): boolean {
   return FINALIZED_STATES.includes(record.lifecycleState);
 }
