@@ -3,12 +3,10 @@
 //
 // Realizes MONGO-GOV: one FRESH canonical store (D-MONGO-1, Option A) for the
 // governed evidence contract — `afi.scored-signal-evidence.v2` (the active
-// write contract, FACTORY-CONTRACT) plus `afi.scored-signal-evidence.v1`
-// (TEMPORARY dual-accept for cross-repo sequencing; removed by
-// SLOT-FCP-CLEANUP once afi-reactor emits v2 only). Validation dispatches on
-// each record's own `schema` const; ALL other store law (unique signalId,
-// append-once, idempotency, supersession, continuity, recordVersion) is
-// version-independent and unchanged. The sole afi-infra storage mutation path
+// write contract, FACTORY-CONTRACT), the ONLY admissible `schema` const; any
+// other value is rejected as SCHEMA_VALIDATION. ALL other store law (unique
+// signalId, append-once, idempotency, supersession, continuity, recordVersion)
+// is contract-independent. The sole afi-infra storage mutation path
 // (D-MONGO-3); a STANDARD collection with a UNIQUE `signalId` index (D-MONGO-6 —
 // NOT time-series, no non-unique fallback); append-once + immutable-after-
 // FINALIZED via versioning-by-supersession (D-MONGO-5); read-by-signalId +
@@ -40,7 +38,7 @@ import {
   type SubmitResult,
   type SupersedeResult,
 } from "./types.js";
-import { validateEvidenceSchema, validateEvidenceSchemaV2 } from "./governedSchema.js";
+import { validateEvidenceSchemaV2 } from "./governedSchema.js";
 import { checkIdentifierContinuity, isFinalized } from "./identifierContinuity.js";
 
 // --- Minimal structural MongoDB surface (injectable for testing) ------------
@@ -315,18 +313,15 @@ export class MongoScoredSignalEvidenceStore implements IScoredSignalEvidenceStor
   async getReplayBundle(signalId: string): Promise<EvidenceReplayBundle | null> {
     const record = await this.getBySignalId(signalId);
     if (!record) return null;
-    const bundle: EvidenceReplayBundle = {
+    return {
       signalId: record.signalId,
       canonicalizationVersion: record.canonicalizationVersion,
       scoredSignal: record.scoredSignal,
       provenanceRecord: record.provenanceRecord,
+      // Replay/verify sufficiency (MONGO-GOV D-MONGO-9) includes the
+      // hash-pinned composition ref — WHAT composed the score.
+      composition: record.composition,
     };
-    // v2 records extend replay/verify sufficiency (MONGO-GOV D-MONGO-9) with
-    // the hash-pinned composition ref; absent for v1 records.
-    if (record.schema === "afi.scored-signal-evidence.v2") {
-      bundle.composition = record.composition;
-    }
-    return bundle;
   }
 
   async close(): Promise<void> {
@@ -342,33 +337,24 @@ export class MongoScoredSignalEvidenceStore implements IScoredSignalEvidenceStor
 
   // --- internals ------------------------------------------------------------
 
-  /** Validate against the governed schema SELECTED BY THE RECORD'S `schema`
-   *  const AND identifier continuity. Both are admission preconditions
-   *  (MONGO-GOV D-MONGO-3). Dispatch:
-   *  - 'afi.scored-signal-evidence.v1' → the governed v1 validator;
-   *  - 'afi.scored-signal-evidence.v2' → the governed v2 validator
-   *    (composition REQUIRED, validated against afi.composition-ref.v1
-   *    including its CanonicalHash sub-shapes);
-   *  - any other `schema` value → rejected as SCHEMA_VALIDATION. */
+  /** Validate against the governed v2 evidence schema AND identifier
+   *  continuity. Both are admission preconditions (MONGO-GOV D-MONGO-3).
+   *  'afi.scored-signal-evidence.v2' is the ONLY admissible `schema` const
+   *  (composition REQUIRED, validated against afi.composition-ref.v1 including
+   *  its CanonicalHash sub-shapes); any other value is rejected as
+   *  SCHEMA_VALIDATION. */
   private assertGovernedRecord(record: AnyScoredSignalEvidenceRecord): void {
     const schemaConst = (record as { schema?: unknown } | null)?.schema;
-    let valid: boolean;
-    let errors: unknown[];
-    if (schemaConst === "afi.scored-signal-evidence.v1") {
-      // TEMPORARY DUAL-ACCEPT for cross-repo sequencing — v1 acceptance is
-      // removed by SLOT-FCP-CLEANUP once afi-reactor emits v2 only.
-      ({ valid, errors } = validateEvidenceSchema(record));
-    } else if (schemaConst === "afi.scored-signal-evidence.v2") {
-      ({ valid, errors } = validateEvidenceSchemaV2(record));
-    } else {
+    if (schemaConst !== "afi.scored-signal-evidence.v2") {
       throw new EvidenceValidationError(
-        `Record carries an unknown evidence schema const '${String(
+        `Record carries an inadmissible evidence schema const '${String(
           schemaConst
-        )}' — admissible values are 'afi.scored-signal-evidence.v1' (temporary dual-accept) and 'afi.scored-signal-evidence.v2'.`,
+        )}' — the only admissible value is 'afi.scored-signal-evidence.v2'.`,
         [],
         (record as { signalId?: string } | null)?.signalId
       );
     }
+    const { valid, errors } = validateEvidenceSchemaV2(record);
     if (!valid) {
       throw new EvidenceValidationError(
         `Record failed governed ${String(schemaConst)} schema validation.`,

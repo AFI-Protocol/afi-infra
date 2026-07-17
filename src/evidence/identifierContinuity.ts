@@ -1,7 +1,7 @@
 // Identifier-continuity + finality checks the store enforces at the mutation
 // boundary. JSON Schema draft-07 cannot express cross-object equality, so these
 // realize the governed x-afiConstraints.identifierContinuity clause of
-// `afi.scored-signal-evidence.v1` (OBJ-GOV D-OBJ-1/D-OBJ-3/D-OBJ-6, LIFE-GOV
+// `afi.scored-signal-evidence.v2` (OBJ-GOV D-OBJ-1/D-OBJ-3/D-OBJ-6, LIFE-GOV
 // D-LIFE-5) — the same constraint the afi-config drift-guard tests assert.
 
 import {
@@ -11,8 +11,8 @@ import {
 
 /** Returns the list of identifier-continuity violations (empty === continuous).
  *  Operates structurally so it is safe to run before/independently of schema
- *  validation. Applies IDENTICALLY to v1 and v2 records — v2 adds only the
- *  `composition` property, which carries no continuity-bound identifiers. */
+ *  validation. The `composition` property carries no continuity-bound
+ *  identifiers. */
 export function checkIdentifierContinuity(
   record: AnyScoredSignalEvidenceRecord
 ): string[] {
