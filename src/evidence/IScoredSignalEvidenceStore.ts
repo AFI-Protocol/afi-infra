@@ -14,10 +14,12 @@ import type {
 export interface IScoredSignalEvidenceStore {
   /**
    * The sole first-write mutation. Validates the complete record against the
-   * governed afi-config schema (`afi.scored-signal-evidence.v2` is the ONLY
+   * governed afi-config schema (`afi.scored-signal-evidence.v3` is the ONLY
    * admissible `schema` const; any other value is rejected as
-   * SCHEMA_VALIDATION) and identifier continuity, then performs an
-   * insert-if-absent keyed by the unique `signalId` (MONGO-GOV D-MONGO-6).
+   * SCHEMA_VALIDATION) and identifier continuity, verifies recordHash and
+   * replayHash by recomputation under canonical-json-hashing.v1 (EV3-GOV
+   * D-EV3-7 — a mis-hashed record is rejected, never persisted), then performs
+   * an insert-if-absent keyed by the unique `signalId` (MONGO-GOV D-MONGO-6).
    *
    * - New `signalId` → `{ outcome: "inserted" }`.
    * - Same `signalId`, byte-identical content → `{ outcome: "idempotent-duplicate" }`
@@ -26,7 +28,8 @@ export interface IScoredSignalEvidenceStore {
    *
    * Never overwrites an existing record (append-once, MONGO-GOV D-MONGO-5).
    * @throws EvidenceValidationError | EvidenceContinuityError |
-   *         EvidenceIdempotencyConflictError | EvidencePersistenceError
+   *         EvidenceHashMismatchError | EvidenceIdempotencyConflictError |
+   *         EvidencePersistenceError
    */
   submit(record: AnyScoredSignalEvidenceRecord): Promise<SubmitResult>;
 
@@ -34,9 +37,13 @@ export interface IScoredSignalEvidenceStore {
    * A governed correction (MONGO-GOV D-MONGO-5 versioning-by-supersession):
    * archives the current record immutably as history and installs a new,
    * higher-`recordVersion` current record. Refused when the current record's
-   * signal has reached a FINALIZED state (immutable-after-FINALIZED).
+   * signal has reached a FINALIZED state (immutable-after-FINALIZED). The
+   * superseding record passes the same hash-verified admission, and its
+   * `supersedesRecordHash` MUST equal the superseded record's `recordHash`
+   * (the EV3-GOV D-EV3-4(6) defined supersession-chain computation).
    * @throws EvidenceValidationError | EvidenceContinuityError |
-   *         EvidenceImmutableError | EvidenceSupersedeError | EvidencePersistenceError
+   *         EvidenceHashMismatchError | EvidenceImmutableError |
+   *         EvidenceSupersedeError | EvidencePersistenceError
    */
   supersede(record: AnyScoredSignalEvidenceRecord): Promise<SupersedeResult>;
 
