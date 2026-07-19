@@ -1,0 +1,284 @@
+{
+  "schema": "afi.canonical-json-hashing-kat.v1",
+  "x-afiStatus": "governed-contract",
+  "canonicalizationVersion": "afi.hash.v1",
+  "description": "Known-answer-test vectors for canonical-json-hashing.v1 (schemas/hashing/canonical-json-hashing.v1.md): sha256 over UTF-8 of the canonically serialized JSON (recursively sorted object keys by UTF-16 code units, arrays in authored order, no insignificant whitespace, numbers in shortest ECMAScript round-trip form), after removing the artifact type's excluded top-level fields. afi-factory and afi-reactor MUST both pass every vector byte-exactly.",
+  "specRef": "afi-config/schemas/hashing/canonical-json-hashing.v1.md",
+  "decisionRef": "afi-governance/decisions/factory-configurable-pipelines-v1",
+  "vectors": [
+    {
+      "name": "key-sorting-nested",
+      "description": "Object keys sort recursively at every level; array order is preserved.",
+      "input": {
+        "b": {
+          "z": 1,
+          "a": [
+            2,
+            1
+          ]
+        },
+        "a": true,
+        "0num": "leading-digit-key"
+      },
+      "expectedCanonicalForm": "{\"0num\":\"leading-digit-key\",\"a\":true,\"b\":{\"a\":[2,1],\"z\":1}}",
+      "expectedSha256": "a78d4261d17a7cbcd64b08fa766060a30f9637395783fa34b9a58a4f4676dc1f"
+    },
+    {
+      "name": "unicode-and-escapes",
+      "description": "Non-ASCII characters are emitted literally (UTF-8), control characters escaped as JSON.stringify does.",
+      "input": {
+        "name": "café",
+        "emoji": "🐸",
+        "escape": "line\nbreak \"quoted\"\ttab"
+      },
+      "expectedCanonicalForm": "{\"emoji\":\"🐸\",\"escape\":\"line\\nbreak \\\"quoted\\\"\\ttab\",\"name\":\"café\"}",
+      "expectedSha256": "95e6e04d0d0d1d78205860c852fc32b4170d7759bdd515cd52d5081fb47b02e7"
+    },
+    {
+      "name": "number-forms",
+      "description": "Numbers serialize in shortest ECMAScript round-trip form: 1e21 -> 1e+21, 0.0000001 -> 1e-7, whole floats lose the decimal point.",
+      "input": {
+        "int": 1,
+        "decimal": 0.25,
+        "big": 1e+21,
+        "tiny": 1e-7,
+        "neg": -1.5,
+        "zero": 0,
+        "whole": 2
+      },
+      "expectedCanonicalForm": "{\"big\":1e+21,\"decimal\":0.25,\"int\":1,\"neg\":-1.5,\"tiny\":1e-7,\"whole\":2,\"zero\":0}",
+      "expectedSha256": "283742c309cbfc018ebd7ef2ac416f2a7d662c0c25b21664034eafae4f33dca7"
+    },
+    {
+      "name": "pipeline-manifest-excludes",
+      "description": "The canonical pipeline example with description/metadata EXCLUDED — this is the exact manifestHash used across the example chain (analyst-strategy-config pipelineRef, composition-ref).",
+      "artifactType": "afi.pipeline.v1",
+      "excludedFields": [
+        "description",
+        "metadata"
+      ],
+      "domainTag": "afi.factory.pipeline-manifest",
+      "input": {
+        "schema": "afi.pipeline.v1",
+        "pipelineId": "mean-reversion-core",
+        "pipelineVersion": "v1.0.0",
+        "description": "Canonical example: five-category enrichment fan-out with a deterministic merge and a single non-bypassable scorer sink.",
+        "entry": "tech-indicators",
+        "nodes": [
+          {
+            "id": "tech-indicators",
+            "category": "technical",
+            "pluginId": "technical-indicators",
+            "pluginVersion": "1.0.0",
+            "config": {
+              "emaPeriods": [
+                20,
+                50
+              ]
+            }
+          },
+          {
+            "id": "pattern-detect",
+            "category": "pattern",
+            "pluginId": "pattern-recognition",
+            "pluginVersion": "1.0.0"
+          },
+          {
+            "id": "perp-sentiment",
+            "category": "sentiment",
+            "pluginId": "perp-sentiment",
+            "pluginVersion": "1.0.0",
+            "timeoutMs": 10000,
+            "maxRetries": 2,
+            "retryDelayMs": 500,
+            "backoff": "fixed"
+          },
+          {
+            "id": "market-news",
+            "category": "news",
+            "pluginId": "newsdata-features",
+            "pluginVersion": "1.0.0",
+            "config": {
+              "windowHours": 24
+            },
+            "timeoutMs": 10000,
+            "critical": false,
+            "failurePolicy": "degrade"
+          },
+          {
+            "id": "ai-ml",
+            "category": "aiMl",
+            "pluginId": "tiny-brains-aiml",
+            "pluginVersion": "1.0.0",
+            "timeoutMs": 1500,
+            "maxRetries": 1,
+            "retryDelayMs": 250,
+            "backoff": "exponential",
+            "critical": false,
+            "failurePolicy": "degrade",
+            "resourceLimits": {
+              "maxConcurrent": 1
+            }
+          },
+          {
+            "id": "enrichment-merge",
+            "category": "merge",
+            "pluginId": "namespace-merge",
+            "pluginVersion": "1.0.0",
+            "join": {
+              "policy": "all",
+              "merge": {
+                "strategy": "namespace-by-node",
+                "conflictRule": "error"
+              }
+            }
+          },
+          {
+            "id": "mean-reversion-scorer",
+            "category": "scorer",
+            "pluginId": "mean-reversion-scorer",
+            "pluginVersion": "1.0.0"
+          }
+        ],
+        "edges": [
+          {
+            "from": "tech-indicators",
+            "to": "pattern-detect"
+          },
+          {
+            "from": "tech-indicators",
+            "to": "perp-sentiment"
+          },
+          {
+            "from": "tech-indicators",
+            "to": "market-news",
+            "condition": {
+              "all": [
+                {
+                  "exists": "/nodes/tech-indicators/output/technical"
+                },
+                {
+                  "gte": {
+                    "path": "/nodes/tech-indicators/output/technical/atrPct",
+                    "value": 0
+                  }
+                }
+              ]
+            },
+            "optional": true
+          },
+          {
+            "from": "tech-indicators",
+            "to": "ai-ml",
+            "optional": true
+          },
+          {
+            "from": "pattern-detect",
+            "to": "enrichment-merge"
+          },
+          {
+            "from": "perp-sentiment",
+            "to": "enrichment-merge"
+          },
+          {
+            "from": "market-news",
+            "to": "enrichment-merge"
+          },
+          {
+            "from": "ai-ml",
+            "to": "enrichment-merge"
+          },
+          {
+            "from": "enrichment-merge",
+            "to": "mean-reversion-scorer"
+          }
+        ],
+        "metadata": {
+          "author": "AFI Factory",
+          "note": "non-authoritative annotation; excluded from canonical hash material"
+        }
+      },
+      "expectedCanonicalForm": "{\"edges\":[{\"from\":\"tech-indicators\",\"to\":\"pattern-detect\"},{\"from\":\"tech-indicators\",\"to\":\"perp-sentiment\"},{\"condition\":{\"all\":[{\"exists\":\"/nodes/tech-indicators/output/technical\"},{\"gte\":{\"path\":\"/nodes/tech-indicators/output/technical/atrPct\",\"value\":0}}]},\"from\":\"tech-indicators\",\"optional\":true,\"to\":\"market-news\"},{\"from\":\"tech-indicators\",\"optional\":true,\"to\":\"ai-ml\"},{\"from\":\"pattern-detect\",\"to\":\"enrichment-merge\"},{\"from\":\"perp-sentiment\",\"to\":\"enrichment-merge\"},{\"from\":\"market-news\",\"to\":\"enrichment-merge\"},{\"from\":\"ai-ml\",\"to\":\"enrichment-merge\"},{\"from\":\"enrichment-merge\",\"to\":\"mean-reversion-scorer\"}],\"entry\":\"tech-indicators\",\"nodes\":[{\"category\":\"technical\",\"config\":{\"emaPeriods\":[20,50]},\"id\":\"tech-indicators\",\"pluginId\":\"technical-indicators\",\"pluginVersion\":\"1.0.0\"},{\"category\":\"pattern\",\"id\":\"pattern-detect\",\"pluginId\":\"pattern-recognition\",\"pluginVersion\":\"1.0.0\"},{\"backoff\":\"fixed\",\"category\":\"sentiment\",\"id\":\"perp-sentiment\",\"maxRetries\":2,\"pluginId\":\"perp-sentiment\",\"pluginVersion\":\"1.0.0\",\"retryDelayMs\":500,\"timeoutMs\":10000},{\"category\":\"news\",\"config\":{\"windowHours\":24},\"critical\":false,\"failurePolicy\":\"degrade\",\"id\":\"market-news\",\"pluginId\":\"newsdata-features\",\"pluginVersion\":\"1.0.0\",\"timeoutMs\":10000},{\"backoff\":\"exponential\",\"category\":\"aiMl\",\"critical\":false,\"failurePolicy\":\"degrade\",\"id\":\"ai-ml\",\"maxRetries\":1,\"pluginId\":\"tiny-brains-aiml\",\"pluginVersion\":\"1.0.0\",\"resourceLimits\":{\"maxConcurrent\":1},\"retryDelayMs\":250,\"timeoutMs\":1500},{\"category\":\"merge\",\"id\":\"enrichment-merge\",\"join\":{\"merge\":{\"conflictRule\":\"error\",\"strategy\":\"namespace-by-node\"},\"policy\":\"all\"},\"pluginId\":\"namespace-merge\",\"pluginVersion\":\"1.0.0\"},{\"category\":\"scorer\",\"id\":\"mean-reversion-scorer\",\"pluginId\":\"mean-reversion-scorer\",\"pluginVersion\":\"1.0.0\"}],\"pipelineId\":\"mean-reversion-core\",\"pipelineVersion\":\"v1.0.0\",\"schema\":\"afi.pipeline.v1\"}",
+      "expectedSha256": "b82f1c35766575cd2e111a447dc5bfc5e3ea6699894f064d287e8748e8992285"
+    },
+    {
+      "name": "analyst-config-excludes",
+      "description": "The canonical analyst-strategy-config example with metadata EXCLUDED — the exact analystConfigHash used by the registration + composition-ref examples.",
+      "artifactType": "afi.analyst-strategy-config.v1",
+      "excludedFields": [
+        "metadata"
+      ],
+      "domainTag": "afi.factory.analyst-config",
+      "input": {
+        "schema": "afi.analyst-strategy-config.v1",
+        "analystId": "kestrel",
+        "strategyId": "mean_reversion_v2",
+        "strategyVersion": "2.1.0",
+        "pipelineRef": {
+          "pipelineId": "mean-reversion-core",
+          "pipelineVersion": "v1.0.0",
+          "manifestHash": {
+            "algorithm": "sha256",
+            "canonicalizationVersion": "afi.hash.v1",
+            "domainTag": "afi.factory.pipeline-manifest",
+            "value": "b82f1c35766575cd2e111a447dc5bfc5e3ea6699894f064d287e8748e8992285"
+          }
+        },
+        "scorerRef": {
+          "pluginId": "mean-reversion-scorer",
+          "pluginVersion": "1.0.0"
+        },
+        "uwrProfileRef": {
+          "profileId": "uwr-weighted-lifts-v0.1"
+        },
+        "decayConfig": {
+          "ref": {
+            "templateId": "decay-swing-v1"
+          }
+        },
+        "nodeOverrides": {
+          "market-news": {
+            "enabled": true,
+            "config": {
+              "windowHours": 12
+            }
+          },
+          "ai-ml": {
+            "enabled": false
+          }
+        },
+        "metadata": {
+          "note": "non-authoritative annotation; excluded from canonical hash material (analystConfigHash)"
+        }
+      },
+      "expectedCanonicalForm": "{\"analystId\":\"kestrel\",\"decayConfig\":{\"ref\":{\"templateId\":\"decay-swing-v1\"}},\"nodeOverrides\":{\"ai-ml\":{\"enabled\":false},\"market-news\":{\"config\":{\"windowHours\":12},\"enabled\":true}},\"pipelineRef\":{\"manifestHash\":{\"algorithm\":\"sha256\",\"canonicalizationVersion\":\"afi.hash.v1\",\"domainTag\":\"afi.factory.pipeline-manifest\",\"value\":\"b82f1c35766575cd2e111a447dc5bfc5e3ea6699894f064d287e8748e8992285\"},\"pipelineId\":\"mean-reversion-core\",\"pipelineVersion\":\"v1.0.0\"},\"schema\":\"afi.analyst-strategy-config.v1\",\"scorerRef\":{\"pluginId\":\"mean-reversion-scorer\",\"pluginVersion\":\"1.0.0\"},\"strategyId\":\"mean_reversion_v2\",\"strategyVersion\":\"2.1.0\",\"uwrProfileRef\":{\"profileId\":\"uwr-weighted-lifts-v0.1\"}}",
+      "expectedSha256": "ea988ce85d1102ce17174bfdf8eb3d1530cefe7f0aae26b88be50f2fef7fb2a5"
+    },
+    {
+      "name": "exclusion-is-top-level-only",
+      "description": "Exclusion strips only the artifact's TOP-LEVEL named fields: a nested key also called metadata is semantic data and survives.",
+      "artifactType": "afi.pipeline.v1",
+      "excludedFields": [
+        "description",
+        "metadata"
+      ],
+      "domainTag": "afi.factory.pipeline-manifest",
+      "input": {
+        "schema": "afi.pipeline.v1",
+        "metadata": {
+          "volatile": true
+        },
+        "nodes": [
+          {
+            "id": "n",
+            "config": {
+              "metadata": "semantic-nested-value"
+            }
+          }
+        ]
+      },
+      "expectedCanonicalForm": "{\"nodes\":[{\"config\":{\"metadata\":\"semantic-nested-value\"},\"id\":\"n\"}],\"schema\":\"afi.pipeline.v1\"}",
+      "expectedSha256": "6ac26661a903d8dc2f9b298eb0a06b70edd1c52ca8906106a074dd42e80dc1a7"
+    }
+  ]
+}

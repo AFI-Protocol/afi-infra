@@ -1,16 +1,24 @@
 {
-  "$comment": "Provenance of the vendored governed schema closure. Each vendored file is a byte-identical copy of afi-config@afiConfigCommit at afiConfigPath. Enforced by tests/evidence/governedSchemaProvenance.test.ts (always) and scripts/verify-governed-schema-provenance.mjs (CI, against a pinned checkout). Do not hand-edit; regenerate only from an owner-approved afi-config commit.",
+  "$comment": "Provenance of the vendored governed schema closure (Evidence V3, EV3-GOV D-EV3-1/D-EV3-8: the closure gains the v3 + invocation-proof members and drops every V2 member). Each vendored file is a byte-identical copy of afi-config@afiConfigCommit at afiConfigPath. Enforced by tests/evidence/governedSchemaProvenance.test.ts (always) and scripts/verify-governed-schema-provenance.mjs (CI, against a pinned checkout). Do not hand-edit; regenerate only from an owner-approved afi-config commit.",
   "afiConfigRepo": "https://github.com/AFI-Protocol/afi-config",
-  "afiConfigCommit": "f91ce4465b9c54bc221ba82e7a468544ffcf3fe3",
-  "governedSchemaIdV2": "https://afi-protocol.org/schemas/scored-signal-evidence/v2/scored-signal-evidence.schema.json",
+  "afiConfigCommit": "e5f17161f957c00913b8763919380e92b0b95c39",
+  "governedSchemaIdV3": "https://afi-protocol.org/schemas/scored-signal-evidence/v3/scored-signal-evidence.schema.json",
   "sources": {
-    "src/evidence/governed-schema/scored-signal-evidence.v2.schema.json": {
-      "afiConfigPath": "schemas/scored-signal-evidence/v2/scored-signal-evidence.schema.json",
-      "sha256": "a748163a0c3a19b3b58cd1aa4f30406a04e308354cc564fc57b119682b6eeebd"
+    "src/evidence/governed-schema/scored-signal-evidence.v3.schema.json": {
+      "afiConfigPath": "schemas/scored-signal-evidence/v3/scored-signal-evidence.schema.json",
+      "sha256": "8ea69e3a52731c67f6ace53dbcdc70c83e6ec9f4f1c1f8b00bfce04e2ab240cf"
+    },
+    "src/evidence/governed-schema/provider-invocation-proof.schema.json": {
+      "afiConfigPath": "schemas/provider-invocation-proof/v1/provider-invocation-proof.schema.json",
+      "sha256": "97bbdbd1d6f9360b5e7dce448fed7170f48bcaea56682360ece9b62a7af5681b"
+    },
+    "src/evidence/governed-schema/aiml-invocation-proof.schema.json": {
+      "afiConfigPath": "schemas/aiml-invocation-proof/v1/aiml-invocation-proof.schema.json",
+      "sha256": "227bea36909189cc821f9307c90b5bea74959c5586127e8e962d0f44af91df7a"
     },
     "src/evidence/governed-schema/composition-ref.schema.json": {
       "afiConfigPath": "schemas/composition-ref/v1/composition-ref.schema.json",
-      "sha256": "2622d3df832df6b6cbe7aa226e6a0fb9e31512b7b9a975a242d76e237f9e4da5"
+      "sha256": "c9c1febeddb4f9fbebb07ebf072320779af8ac8012fc1b6801e4ea085f21ab69"
     },
     "src/evidence/governed-schema/canonical-hash.schema.json": {
       "afiConfigPath": "schemas/provenance/v1/canonical-hash.schema.json",
@@ -24,21 +32,25 @@
       "afiConfigPath": "schemas/provenance/v1/source-disclosure-profile.schema.json",
       "sha256": "7c31bdec3e5578a5da1c2107f7cb29c8fcba817dda17e511103ce94dfdd5d6f7"
     },
-    "src/evidence/governed-schema/enrichment-provenance.schema.json": {
-      "afiConfigPath": "schemas/provenance/v1/enrichment-provenance.schema.json",
-      "sha256": "ceeeac4109679ae3ad3cf075a28011d2f671ea5f3d52c97ed3a57e4a745f2d70"
-    },
     "src/evidence/governed-schema/scored-signal.schema.json": {
       "afiConfigPath": "schemas/provenance/v1/scored-signal.schema.json",
       "sha256": "cfe5a74ce39ec6bcb3745b080c42ac865615605bad696f0727957842c9575b23"
     },
     "src/evidence/governed-schema/provenance-record.schema.json": {
       "afiConfigPath": "schemas/provenance/v1/provenance-record.schema.json",
-      "sha256": "e7d1f9407ca658cbc4641e9297fdaaf8ac388bf681162ccedd771dd4b1f7d5d9"
+      "sha256": "b5e420c8c35c0c0e0128719a5187ae5493a824e18676e2896e90c8b5b5c2f536"
     },
-    "tests/evidence/vendored/minimal-scored.v2.json": {
-      "afiConfigPath": "examples/scored-signal-evidence/v2/vectors/valid/minimal-scored.json",
-      "sha256": "9b9013f08043790c66cae0a25b294c9a5dfe3fd6afc6e608ce874f6e263352df"
+    "tests/evidence/vendored/minimal-scored.v3.json": {
+      "afiConfigPath": "examples/scored-signal-evidence/v3/vectors/valid/minimal-scored.json",
+      "sha256": "dcd17462693647073f027f70978b3473ae8fbaeee91dc08976a3e1ef363438bc"
+    },
+    "tests/evidence/vendored/canonical-json-hashing.kat.json": {
+      "afiConfigPath": "kats/hashing/v1/canonical-json-hashing.kat.json",
+      "sha256": "f217ae5d1353c5c6de0ae513cf8b61277e81154f66e4521289b6a77cbaccef1c"
+    },
+    "tests/evidence/vendored/evidence-v3-hashes.kat.json": {
+      "afiConfigPath": "kats/evidence/v3/evidence-v3-hashes.kat.json",
+      "sha256": "c66adc9a055482473ce7d9d2c9aee1b15b784c83313418aa3e6026dda4bc9bd3"
     }
   }
 }

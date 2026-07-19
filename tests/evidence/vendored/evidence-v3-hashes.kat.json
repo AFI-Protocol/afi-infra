@@ -1,0 +1,1120 @@
+{
+  "schema": "afi.evidence-v3-hash-kat.v1",
+  "x-afiStatus": "governed-contract",
+  "canonicalizationVersion": "afi.hash.v1",
+  "description": "Known-answer-test vectors for the Evidence V3 hash projections (EV3-GOV D-EV3-4): recordHash = the v3 record minus {recordHash, replayHash}; replayHash = the record minus {recordHash, replayHash, lifecycleState, finalized, recordVersion, supersedesRecordHash}; categoryResultHash = the FULL category result consumed by the join; providerResultHash = the category result minus its category property. Every digest is sha256 over UTF-8 of the canonically serialized JSON per canonical-json-hashing.v1, with the domain tag CARRIED in the CanonicalHash object and NEVER part of the hash material. The record vectors embed the governed v3 canonical example byte-exactly; the lane vectors embed the governed enrichment contract valid vectors byte-exactly.",
+  "specRef": "afi-config/schemas/hashing/canonical-json-hashing.v1.md",
+  "decisionRef": "afi-governance/decisions/evidence-v3-provider-provenance-v0.1",
+  "generatedBy": "afi-config/scripts/generate-evidence-v3-kats.mjs",
+  "vectors": [
+    {
+      "name": "record-hash-full-record",
+      "description": "recordHash preimage: the governed v3 canonical example minus {recordHash, replayHash} (top-level exclusion; D-EV3-4(6)). This is the exact recordHash.value the example pins.",
+      "domainTag": "afi.d2.evidence-record",
+      "excludedFields": [
+        "recordHash",
+        "replayHash"
+      ],
+      "input": {
+        "schema": "afi.scored-signal-evidence.v3",
+        "signalId": "sig-d2-20260719-000501",
+        "analystId": "froggy",
+        "strategyId": "trend_pullback_v1",
+        "strategyVersion": "1.0.0",
+        "canonicalizationVersion": "afi.hash.v1",
+        "lifecycleState": "FINALIZED",
+        "finalized": true,
+        "recordVersion": 1,
+        "uwrProfile": {
+          "profileId": "uwr-weighted-lifts-v0.1",
+          "status": "testnet-provisional",
+          "decisionRef": "afi-governance/decisions/uwr-profile-pin-v0.1.md",
+          "source": "builtin-value-identity"
+        },
+        "composition": {
+          "schema": "afi.composition-ref.v1",
+          "pipelineId": "trend-pullback-core",
+          "pipelineVersion": "v1.0.0",
+          "manifestHash": {
+            "algorithm": "sha256",
+            "canonicalizationVersion": "afi.hash.v1",
+            "domainTag": "afi.factory.pipeline-manifest",
+            "value": "c8a345ee2815ae02e011f40928fe03ca1a91bdbba5ff7ebb3accf8e484ee4f56"
+          },
+          "analystConfigHash": {
+            "algorithm": "sha256",
+            "canonicalizationVersion": "afi.hash.v1",
+            "domainTag": "afi.factory.analyst-config",
+            "value": "25cf714c9f93a27b1f21abefa75cacc2da6ded5d95bb9d6c4f663f1053009023"
+          },
+          "scorerPluginId": "trend-pullback-scorer",
+          "scorerPluginVersion": "1.0.0",
+          "pluginSetHash": {
+            "algorithm": "sha256",
+            "canonicalizationVersion": "afi.hash.v1",
+            "domainTag": "afi.factory.plugin-set",
+            "value": "e6684fcdae1b0934178506c7beee585b1c36ecad3bcfaa429172e6a7a174784a"
+          },
+          "executionSummaryHash": {
+            "algorithm": "sha256",
+            "canonicalizationVersion": "afi.hash.v1",
+            "domainTag": "afi.reactor.execution-summary",
+            "value": "58f583d4f0061528fea188f90c607e9396f72b2f49b3f9aeaeb7b43f06630b8a"
+          },
+          "enrichmentHash": {
+            "algorithm": "sha256",
+            "canonicalizationVersion": "afi.hash.v1",
+            "domainTag": "afi.d2.enrichment-bundle",
+            "value": "b6cab7e6f26ec8edafae325c386aa73ca95929bc14eed2e0d5afeacc997f3ed5"
+          }
+        },
+        "providerInvocations": [
+          {
+            "schema": "afi.provider-invocation-proof.v1",
+            "category": "aiMl",
+            "resultSchema": "afi.enrichment.aiml.v1",
+            "provider": {
+              "providerId": "afi-provider-aiml-tiny-brains",
+              "recordVersion": "1.1.0",
+              "recordFingerprint": {
+                "algorithm": "sha256",
+                "canonicalizationVersion": "afi.hash.v1",
+                "domainTag": "afi.d2.provider-record",
+                "value": "1d0809d9944e06c478acb5292c5c9003f08747b980ead080638640f746007890"
+              },
+              "executionClass": "remote",
+              "deterministic": false
+            },
+            "providerInstance": {
+              "providerInstanceId": "afi-instance-reference-aiml-tiny-brains",
+              "recordVersion": "1.1.0",
+              "recordFingerprint": {
+                "algorithm": "sha256",
+                "canonicalizationVersion": "afi.hash.v1",
+                "domainTag": "afi.d2.provider-instance-record",
+                "value": "f1e6d7e79b5807e99250f112be016923ba618a91026ba4be481e4e34206c322a"
+              },
+              "model": "froggy-reference-v1"
+            },
+            "adapter": {
+              "adapterId": "afi-adapter-aiml-tiny-brains",
+              "adapterVersion": "1.1.0",
+              "transportKind": "http"
+            },
+            "credential": {
+              "mode": "keyless"
+            },
+            "invocationInputHash": {
+              "algorithm": "sha256",
+              "canonicalizationVersion": "afi.hash.v1",
+              "domainTag": "afi.d2.provider-invocation-input",
+              "value": "af9b93fedb972c98f2566fea9abc3df4cb4ced085c716c7c3fabd6c94960cef8"
+            },
+            "providerResultHash": {
+              "algorithm": "sha256",
+              "canonicalizationVersion": "afi.hash.v1",
+              "domainTag": "afi.d2.provider-result",
+              "value": "9649faac015e5d6926d451e32f66310c59f74fbc1e1b9b334d7d03c0418e78aa"
+            },
+            "categoryResultHash": {
+              "algorithm": "sha256",
+              "canonicalizationVersion": "afi.hash.v1",
+              "domainTag": "afi.d2.lane-output",
+              "value": "cbf225a936b3df1bc58a8e2d2e46e2092782efb7184313d035fa67bd16864a4c"
+            },
+            "status": "succeeded",
+            "aimlInvocation": {
+              "schema": "afi.aiml-invocation-proof.v1",
+              "profileId": "froggy-reference-v1",
+              "profileVersion": "1.0.0",
+              "resolverId": "froggy-deterministic-resolver",
+              "resolverVersion": "1.0.0",
+              "codeConfigFingerprint": "32ec073828133b72d0a120180c5d7b39cf50e0c05b3896f5c8459a2d8f8741d5",
+              "hashLaw": "tiny-brains.hash.v1",
+              "inputHash": "5ee590928b3fd3fa4c0c88f78188b37390786f885c2f6d266932b4371e68e167",
+              "outputHash": "58d0a57e6c4717b567c80a6baa59ae5d88b52f74f7d484cc33c2f82bf27322d6",
+              "status": "succeeded",
+              "experts": [
+                {
+                  "expertId": "chronos-bolt-forecaster",
+                  "expertVersion": "1.0.0",
+                  "posture": "probabilistic",
+                  "status": "succeeded",
+                  "outputHash": "0718d9cdaa72e8dcc1c8de3e1c5a91826df4b43dc9180dcc23a16e86208d0e64",
+                  "artifactFingerprints": {
+                    "chronos-bolt-tiny": "7071dbb12bd85c4616d3a189bceab8c0c42a3a359249bd016794d9ac363b0bea"
+                  }
+                },
+                {
+                  "expertId": "trend-baseline",
+                  "expertVersion": "1.0.0",
+                  "posture": "deterministic",
+                  "status": "succeeded",
+                  "outputHash": "d8db193603b80c0480c28ee51cfae677a31043555aa8e395e43aac21519fe63d"
+                }
+              ]
+            }
+          },
+          {
+            "schema": "afi.provider-invocation-proof.v1",
+            "category": "news",
+            "resultSchema": "afi.enrichment.news.v1",
+            "provider": {
+              "providerId": "afi-provider-news-sec-edgar",
+              "recordVersion": "1.0.0",
+              "recordFingerprint": {
+                "algorithm": "sha256",
+                "canonicalizationVersion": "afi.hash.v1",
+                "domainTag": "afi.d2.provider-record",
+                "value": "66c9edecc3646fc0f17d8609f69518d965b73ee2e2e84650f171b70ff29220fe"
+              },
+              "executionClass": "remote",
+              "deterministic": false
+            },
+            "providerInstance": {
+              "providerInstanceId": "afi-instance-reference-news-sec-edgar",
+              "recordVersion": "1.0.0",
+              "recordFingerprint": {
+                "algorithm": "sha256",
+                "canonicalizationVersion": "afi.hash.v1",
+                "domainTag": "afi.d2.provider-instance-record",
+                "value": "2b22b2f31fc32397282a0c69de4e2356e0fd6e3c5980e7cf4d45e95c5abda61d"
+              }
+            },
+            "adapter": {
+              "adapterId": "afi-adapter-news-sec-edgar",
+              "adapterVersion": "1.0.0",
+              "transportKind": "http"
+            },
+            "credential": {
+              "mode": "keyless"
+            },
+            "invocationInputHash": {
+              "algorithm": "sha256",
+              "canonicalizationVersion": "afi.hash.v1",
+              "domainTag": "afi.d2.provider-invocation-input",
+              "value": "1ab276d9e350544b74d27c0f6b4a74464e71935b4d55a57356f9a14d2dec3130"
+            },
+            "providerResultHash": {
+              "algorithm": "sha256",
+              "canonicalizationVersion": "afi.hash.v1",
+              "domainTag": "afi.d2.provider-result",
+              "value": "7ad4bce130a6da52bb6f787b601f8209fc70422bd075a2d4602a11d7e5cc8753"
+            },
+            "categoryResultHash": {
+              "algorithm": "sha256",
+              "canonicalizationVersion": "afi.hash.v1",
+              "domainTag": "afi.d2.lane-output",
+              "value": "058289fbe9462c2564dfc9b9b9002f00a6ee4500d18f07fb15d1c605475eed9d"
+            },
+            "status": "succeeded"
+          },
+          {
+            "schema": "afi.provider-invocation-proof.v1",
+            "category": "pattern",
+            "resultSchema": "afi.enrichment.pattern.v1",
+            "provider": {
+              "providerId": "afi-provider-pattern-candlestick",
+              "recordVersion": "1.0.0",
+              "recordFingerprint": {
+                "algorithm": "sha256",
+                "canonicalizationVersion": "afi.hash.v1",
+                "domainTag": "afi.d2.provider-record",
+                "value": "08a4a981cbe18d871bce2db50593d35c70c4fabe192d7b117ea770f29fd017cf"
+              },
+              "executionClass": "local",
+              "deterministic": true
+            },
+            "providerInstance": {
+              "providerInstanceId": "afi-instance-reference-pattern-candlestick",
+              "recordVersion": "1.0.0",
+              "recordFingerprint": {
+                "algorithm": "sha256",
+                "canonicalizationVersion": "afi.hash.v1",
+                "domainTag": "afi.d2.provider-instance-record",
+                "value": "9be19c95791c65b9bc2773e463d15984ce92a9f256595c54e5c0e0b5e3cf6f0b"
+              }
+            },
+            "adapter": {
+              "adapterId": "afi-adapter-pattern-candlestick",
+              "adapterVersion": "1.0.0",
+              "transportKind": "in-process"
+            },
+            "credential": {
+              "mode": "keyless"
+            },
+            "invocationInputHash": {
+              "algorithm": "sha256",
+              "canonicalizationVersion": "afi.hash.v1",
+              "domainTag": "afi.d2.provider-invocation-input",
+              "value": "393e1b1935f64ae3d38cc6bc1a794b4df0d4323a2d83fa45efd869a9331d34c7"
+            },
+            "providerResultHash": {
+              "algorithm": "sha256",
+              "canonicalizationVersion": "afi.hash.v1",
+              "domainTag": "afi.d2.provider-result",
+              "value": "5c45288c3722da629f29b72dc38d2a5cbc189f527d595f2ee131cda5be871bf3"
+            },
+            "categoryResultHash": {
+              "algorithm": "sha256",
+              "canonicalizationVersion": "afi.hash.v1",
+              "domainTag": "afi.d2.lane-output",
+              "value": "130f513d32f42276ce0effd69e986aa3cb79e2ed0952880713c5bff4b7606a77"
+            },
+            "status": "succeeded"
+          },
+          {
+            "schema": "afi.provider-invocation-proof.v1",
+            "category": "sentiment",
+            "resultSchema": "afi.enrichment.sentiment.v1",
+            "provider": {
+              "providerId": "afi-provider-sentiment-cftc-cot",
+              "recordVersion": "1.0.0",
+              "recordFingerprint": {
+                "algorithm": "sha256",
+                "canonicalizationVersion": "afi.hash.v1",
+                "domainTag": "afi.d2.provider-record",
+                "value": "869f91b44d2e3dfbbdaa99bfca467bcb56120fd2322614eaa404c709b2cd96d5"
+              },
+              "executionClass": "remote",
+              "deterministic": false
+            },
+            "providerInstance": {
+              "providerInstanceId": "afi-instance-reference-sentiment-cftc-cot",
+              "recordVersion": "1.0.0",
+              "recordFingerprint": {
+                "algorithm": "sha256",
+                "canonicalizationVersion": "afi.hash.v1",
+                "domainTag": "afi.d2.provider-instance-record",
+                "value": "ff9cdd5e2d4a00cdeba9f36953b8a0db7588e6ba74a2a26bd55a6791491d7ec9"
+              }
+            },
+            "adapter": {
+              "adapterId": "afi-adapter-sentiment-cftc-cot",
+              "adapterVersion": "1.0.0",
+              "transportKind": "http"
+            },
+            "credential": {
+              "mode": "keyless"
+            },
+            "invocationInputHash": {
+              "algorithm": "sha256",
+              "canonicalizationVersion": "afi.hash.v1",
+              "domainTag": "afi.d2.provider-invocation-input",
+              "value": "233c0b733de688a07c7a78dccd9063c7f1b43a0782d18521730aae4c90854f12"
+            },
+            "providerResultHash": {
+              "algorithm": "sha256",
+              "canonicalizationVersion": "afi.hash.v1",
+              "domainTag": "afi.d2.provider-result",
+              "value": "dcea1362863d8b4df2db5097855d2414754a8366a004d63378bad85740ba8026"
+            },
+            "categoryResultHash": {
+              "algorithm": "sha256",
+              "canonicalizationVersion": "afi.hash.v1",
+              "domainTag": "afi.d2.lane-output",
+              "value": "d1154daf0ebfa2c00687c968b6787002ace93fe93034707326ced01d727f5dbc"
+            },
+            "status": "succeeded"
+          },
+          {
+            "schema": "afi.provider-invocation-proof.v1",
+            "category": "technical",
+            "resultSchema": "afi.enrichment.technical.v1",
+            "provider": {
+              "providerId": "afi-provider-technical-local",
+              "recordVersion": "1.0.0",
+              "recordFingerprint": {
+                "algorithm": "sha256",
+                "canonicalizationVersion": "afi.hash.v1",
+                "domainTag": "afi.d2.provider-record",
+                "value": "71b3c1d915c53c7aa759e00eaf8433061d954d93cbdfd614e41b1ba1083b38ce"
+              },
+              "executionClass": "local",
+              "deterministic": true
+            },
+            "providerInstance": {
+              "providerInstanceId": "afi-instance-reference-technical-local",
+              "recordVersion": "1.0.0",
+              "recordFingerprint": {
+                "algorithm": "sha256",
+                "canonicalizationVersion": "afi.hash.v1",
+                "domainTag": "afi.d2.provider-instance-record",
+                "value": "c1fb9e8cc043c3cade28921ff2ce69712a228065c45efced3d7133876b108499"
+              }
+            },
+            "adapter": {
+              "adapterId": "afi-adapter-technical-local",
+              "adapterVersion": "1.0.0",
+              "transportKind": "in-process"
+            },
+            "credential": {
+              "mode": "keyless"
+            },
+            "invocationInputHash": {
+              "algorithm": "sha256",
+              "canonicalizationVersion": "afi.hash.v1",
+              "domainTag": "afi.d2.provider-invocation-input",
+              "value": "7b5d6e977b78a3fb060c93c97746f08391f19f2f2fddcb1b66341040e76c2a7a"
+            },
+            "providerResultHash": {
+              "algorithm": "sha256",
+              "canonicalizationVersion": "afi.hash.v1",
+              "domainTag": "afi.d2.provider-result",
+              "value": "b2ebc05b02a74446e131fe510933f0f94068dfdce3917403c37cd052e144a79b"
+            },
+            "categoryResultHash": {
+              "algorithm": "sha256",
+              "canonicalizationVersion": "afi.hash.v1",
+              "domainTag": "afi.d2.lane-output",
+              "value": "4d6f2f1485b431f07a342fc6099ccaea8c71c1eb3a04335945db36a4b9d49815"
+            },
+            "priceSource": "blofin",
+            "status": "succeeded"
+          }
+        ],
+        "recordHash": {
+          "algorithm": "sha256",
+          "canonicalizationVersion": "afi.hash.v1",
+          "domainTag": "afi.d2.evidence-record",
+          "value": "e44ada225497175f0257358aa873b2d6a34c0b6887ed14f51b0e79e626ec23dd"
+        },
+        "replayHash": {
+          "algorithm": "sha256",
+          "canonicalizationVersion": "afi.hash.v1",
+          "domainTag": "afi.d2.evidence-replay",
+          "value": "d73585af9b636be859a6f7cfff581b27d219763c1d029aab0d9111d6aa01e31f"
+        },
+        "scoredSignal": {
+          "schema": "afi.scored-signal.v1",
+          "signalId": "sig-d2-20260719-000501",
+          "analystId": "froggy",
+          "strategyId": "trend_pullback_v1",
+          "strategyVersion": "1.0.0",
+          "direction": "long",
+          "riskBucket": "medium",
+          "conviction": 0.72,
+          "uwrScore": 0.81,
+          "uwrAxes": {
+            "structure": 0.8,
+            "execution": 0.7,
+            "risk": 0.85,
+            "insight": 0.9
+          },
+          "evaluatedAt": "2026-01-15T12:00:00Z",
+          "provenanceRecordRef": "provenance-record:sig-d2-20260719-000501",
+          "outputHash": {
+            "algorithm": "sha256",
+            "canonicalizationVersion": "afi.hash.v1",
+            "domainTag": "afi.d2.scored-output",
+            "value": "3f79bb7b435b05321651daefd374cdc681dc06faa65e374e38337b88ca046dea"
+          }
+        },
+        "provenanceRecord": {
+          "schema": "afi.provenance-record.v1",
+          "signalId": "sig-d2-20260719-000501",
+          "canonicalizationVersion": "afi.hash.v1",
+          "inputHash": {
+            "algorithm": "sha256",
+            "canonicalizationVersion": "afi.hash.v1",
+            "domainTag": "afi.d2.signal-input",
+            "value": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          },
+          "enrichmentHash": {
+            "algorithm": "sha256",
+            "canonicalizationVersion": "afi.hash.v1",
+            "domainTag": "afi.d2.enrichment-bundle",
+            "value": "3e23e8160039594a33894f6564e1b1348bbd7a0088d42c4acb73eeaed59c009d"
+          },
+          "outputHash": {
+            "algorithm": "sha256",
+            "canonicalizationVersion": "afi.hash.v1",
+            "domainTag": "afi.d2.scored-output",
+            "value": "3f79bb7b435b05321651daefd374cdc681dc06faa65e374e38337b88ca046dea"
+          },
+          "evidenceRefs": [
+            {
+              "evidenceId": "ev-price-context-sig-d2-20260719-000501",
+              "sourceRef": "src-exchange-blofin-api",
+              "evidenceHash": {
+                "algorithm": "sha256",
+                "canonicalizationVersion": "afi.hash.v1",
+                "domainTag": "afi.d2.evidence",
+                "value": "ca978112ca1bbdcafac231b39a23dc4da786eff8147c4e72b9807785afee48bb"
+              },
+              "asOf": "2026-01-15T12:00:00Z",
+              "redactionStatus": "disclosed"
+            }
+          ],
+          "sourceDisclosureRefs": [
+            "src-exchange-blofin-api"
+          ],
+          "replayProfileRef": "replay-profile:sig-d2-20260719-000501",
+          "domainTags": [
+            "afi.d2.signal-input",
+            "afi.d2.enrichment-bundle",
+            "afi.d2.scored-output",
+            "afi.d2.evidence",
+            "afi.d2.provider-record",
+            "afi.d2.provider-instance-record",
+            "afi.d2.provider-invocation-input",
+            "afi.d2.provider-result",
+            "afi.d2.lane-output",
+            "afi.d2.evidence-record",
+            "afi.d2.evidence-replay"
+          ],
+          "schemaVersions": {
+            "input": "afi.usignal.v1.1",
+            "envelope": "afi.analyst-input-envelope.v1",
+            "output": "afi.scored-signal.v1"
+          }
+        }
+      },
+      "expectedSha256": "e44ada225497175f0257358aa873b2d6a34c0b6887ed14f51b0e79e626ec23dd"
+    },
+    {
+      "name": "replay-hash-projection",
+      "description": "replayHash preimage: the governed v3 canonical example minus {recordHash, replayHash, lifecycleState, finalized, recordVersion, supersedesRecordHash} (the deterministic semantic/replay projection; D-EV3-4(6)/(7)). This is the exact replayHash.value the example pins. Lifecycle progression and supersession custody never move this digest.",
+      "domainTag": "afi.d2.evidence-replay",
+      "excludedFields": [
+        "recordHash",
+        "replayHash",
+        "lifecycleState",
+        "finalized",
+        "recordVersion",
+        "supersedesRecordHash"
+      ],
+      "input": {
+        "schema": "afi.scored-signal-evidence.v3",
+        "signalId": "sig-d2-20260719-000501",
+        "analystId": "froggy",
+        "strategyId": "trend_pullback_v1",
+        "strategyVersion": "1.0.0",
+        "canonicalizationVersion": "afi.hash.v1",
+        "lifecycleState": "FINALIZED",
+        "finalized": true,
+        "recordVersion": 1,
+        "uwrProfile": {
+          "profileId": "uwr-weighted-lifts-v0.1",
+          "status": "testnet-provisional",
+          "decisionRef": "afi-governance/decisions/uwr-profile-pin-v0.1.md",
+          "source": "builtin-value-identity"
+        },
+        "composition": {
+          "schema": "afi.composition-ref.v1",
+          "pipelineId": "trend-pullback-core",
+          "pipelineVersion": "v1.0.0",
+          "manifestHash": {
+            "algorithm": "sha256",
+            "canonicalizationVersion": "afi.hash.v1",
+            "domainTag": "afi.factory.pipeline-manifest",
+            "value": "c8a345ee2815ae02e011f40928fe03ca1a91bdbba5ff7ebb3accf8e484ee4f56"
+          },
+          "analystConfigHash": {
+            "algorithm": "sha256",
+            "canonicalizationVersion": "afi.hash.v1",
+            "domainTag": "afi.factory.analyst-config",
+            "value": "25cf714c9f93a27b1f21abefa75cacc2da6ded5d95bb9d6c4f663f1053009023"
+          },
+          "scorerPluginId": "trend-pullback-scorer",
+          "scorerPluginVersion": "1.0.0",
+          "pluginSetHash": {
+            "algorithm": "sha256",
+            "canonicalizationVersion": "afi.hash.v1",
+            "domainTag": "afi.factory.plugin-set",
+            "value": "e6684fcdae1b0934178506c7beee585b1c36ecad3bcfaa429172e6a7a174784a"
+          },
+          "executionSummaryHash": {
+            "algorithm": "sha256",
+            "canonicalizationVersion": "afi.hash.v1",
+            "domainTag": "afi.reactor.execution-summary",
+            "value": "58f583d4f0061528fea188f90c607e9396f72b2f49b3f9aeaeb7b43f06630b8a"
+          },
+          "enrichmentHash": {
+            "algorithm": "sha256",
+            "canonicalizationVersion": "afi.hash.v1",
+            "domainTag": "afi.d2.enrichment-bundle",
+            "value": "b6cab7e6f26ec8edafae325c386aa73ca95929bc14eed2e0d5afeacc997f3ed5"
+          }
+        },
+        "providerInvocations": [
+          {
+            "schema": "afi.provider-invocation-proof.v1",
+            "category": "aiMl",
+            "resultSchema": "afi.enrichment.aiml.v1",
+            "provider": {
+              "providerId": "afi-provider-aiml-tiny-brains",
+              "recordVersion": "1.1.0",
+              "recordFingerprint": {
+                "algorithm": "sha256",
+                "canonicalizationVersion": "afi.hash.v1",
+                "domainTag": "afi.d2.provider-record",
+                "value": "1d0809d9944e06c478acb5292c5c9003f08747b980ead080638640f746007890"
+              },
+              "executionClass": "remote",
+              "deterministic": false
+            },
+            "providerInstance": {
+              "providerInstanceId": "afi-instance-reference-aiml-tiny-brains",
+              "recordVersion": "1.1.0",
+              "recordFingerprint": {
+                "algorithm": "sha256",
+                "canonicalizationVersion": "afi.hash.v1",
+                "domainTag": "afi.d2.provider-instance-record",
+                "value": "f1e6d7e79b5807e99250f112be016923ba618a91026ba4be481e4e34206c322a"
+              },
+              "model": "froggy-reference-v1"
+            },
+            "adapter": {
+              "adapterId": "afi-adapter-aiml-tiny-brains",
+              "adapterVersion": "1.1.0",
+              "transportKind": "http"
+            },
+            "credential": {
+              "mode": "keyless"
+            },
+            "invocationInputHash": {
+              "algorithm": "sha256",
+              "canonicalizationVersion": "afi.hash.v1",
+              "domainTag": "afi.d2.provider-invocation-input",
+              "value": "af9b93fedb972c98f2566fea9abc3df4cb4ced085c716c7c3fabd6c94960cef8"
+            },
+            "providerResultHash": {
+              "algorithm": "sha256",
+              "canonicalizationVersion": "afi.hash.v1",
+              "domainTag": "afi.d2.provider-result",
+              "value": "9649faac015e5d6926d451e32f66310c59f74fbc1e1b9b334d7d03c0418e78aa"
+            },
+            "categoryResultHash": {
+              "algorithm": "sha256",
+              "canonicalizationVersion": "afi.hash.v1",
+              "domainTag": "afi.d2.lane-output",
+              "value": "cbf225a936b3df1bc58a8e2d2e46e2092782efb7184313d035fa67bd16864a4c"
+            },
+            "status": "succeeded",
+            "aimlInvocation": {
+              "schema": "afi.aiml-invocation-proof.v1",
+              "profileId": "froggy-reference-v1",
+              "profileVersion": "1.0.0",
+              "resolverId": "froggy-deterministic-resolver",
+              "resolverVersion": "1.0.0",
+              "codeConfigFingerprint": "32ec073828133b72d0a120180c5d7b39cf50e0c05b3896f5c8459a2d8f8741d5",
+              "hashLaw": "tiny-brains.hash.v1",
+              "inputHash": "5ee590928b3fd3fa4c0c88f78188b37390786f885c2f6d266932b4371e68e167",
+              "outputHash": "58d0a57e6c4717b567c80a6baa59ae5d88b52f74f7d484cc33c2f82bf27322d6",
+              "status": "succeeded",
+              "experts": [
+                {
+                  "expertId": "chronos-bolt-forecaster",
+                  "expertVersion": "1.0.0",
+                  "posture": "probabilistic",
+                  "status": "succeeded",
+                  "outputHash": "0718d9cdaa72e8dcc1c8de3e1c5a91826df4b43dc9180dcc23a16e86208d0e64",
+                  "artifactFingerprints": {
+                    "chronos-bolt-tiny": "7071dbb12bd85c4616d3a189bceab8c0c42a3a359249bd016794d9ac363b0bea"
+                  }
+                },
+                {
+                  "expertId": "trend-baseline",
+                  "expertVersion": "1.0.0",
+                  "posture": "deterministic",
+                  "status": "succeeded",
+                  "outputHash": "d8db193603b80c0480c28ee51cfae677a31043555aa8e395e43aac21519fe63d"
+                }
+              ]
+            }
+          },
+          {
+            "schema": "afi.provider-invocation-proof.v1",
+            "category": "news",
+            "resultSchema": "afi.enrichment.news.v1",
+            "provider": {
+              "providerId": "afi-provider-news-sec-edgar",
+              "recordVersion": "1.0.0",
+              "recordFingerprint": {
+                "algorithm": "sha256",
+                "canonicalizationVersion": "afi.hash.v1",
+                "domainTag": "afi.d2.provider-record",
+                "value": "66c9edecc3646fc0f17d8609f69518d965b73ee2e2e84650f171b70ff29220fe"
+              },
+              "executionClass": "remote",
+              "deterministic": false
+            },
+            "providerInstance": {
+              "providerInstanceId": "afi-instance-reference-news-sec-edgar",
+              "recordVersion": "1.0.0",
+              "recordFingerprint": {
+                "algorithm": "sha256",
+                "canonicalizationVersion": "afi.hash.v1",
+                "domainTag": "afi.d2.provider-instance-record",
+                "value": "2b22b2f31fc32397282a0c69de4e2356e0fd6e3c5980e7cf4d45e95c5abda61d"
+              }
+            },
+            "adapter": {
+              "adapterId": "afi-adapter-news-sec-edgar",
+              "adapterVersion": "1.0.0",
+              "transportKind": "http"
+            },
+            "credential": {
+              "mode": "keyless"
+            },
+            "invocationInputHash": {
+              "algorithm": "sha256",
+              "canonicalizationVersion": "afi.hash.v1",
+              "domainTag": "afi.d2.provider-invocation-input",
+              "value": "1ab276d9e350544b74d27c0f6b4a74464e71935b4d55a57356f9a14d2dec3130"
+            },
+            "providerResultHash": {
+              "algorithm": "sha256",
+              "canonicalizationVersion": "afi.hash.v1",
+              "domainTag": "afi.d2.provider-result",
+              "value": "7ad4bce130a6da52bb6f787b601f8209fc70422bd075a2d4602a11d7e5cc8753"
+            },
+            "categoryResultHash": {
+              "algorithm": "sha256",
+              "canonicalizationVersion": "afi.hash.v1",
+              "domainTag": "afi.d2.lane-output",
+              "value": "058289fbe9462c2564dfc9b9b9002f00a6ee4500d18f07fb15d1c605475eed9d"
+            },
+            "status": "succeeded"
+          },
+          {
+            "schema": "afi.provider-invocation-proof.v1",
+            "category": "pattern",
+            "resultSchema": "afi.enrichment.pattern.v1",
+            "provider": {
+              "providerId": "afi-provider-pattern-candlestick",
+              "recordVersion": "1.0.0",
+              "recordFingerprint": {
+                "algorithm": "sha256",
+                "canonicalizationVersion": "afi.hash.v1",
+                "domainTag": "afi.d2.provider-record",
+                "value": "08a4a981cbe18d871bce2db50593d35c70c4fabe192d7b117ea770f29fd017cf"
+              },
+              "executionClass": "local",
+              "deterministic": true
+            },
+            "providerInstance": {
+              "providerInstanceId": "afi-instance-reference-pattern-candlestick",
+              "recordVersion": "1.0.0",
+              "recordFingerprint": {
+                "algorithm": "sha256",
+                "canonicalizationVersion": "afi.hash.v1",
+                "domainTag": "afi.d2.provider-instance-record",
+                "value": "9be19c95791c65b9bc2773e463d15984ce92a9f256595c54e5c0e0b5e3cf6f0b"
+              }
+            },
+            "adapter": {
+              "adapterId": "afi-adapter-pattern-candlestick",
+              "adapterVersion": "1.0.0",
+              "transportKind": "in-process"
+            },
+            "credential": {
+              "mode": "keyless"
+            },
+            "invocationInputHash": {
+              "algorithm": "sha256",
+              "canonicalizationVersion": "afi.hash.v1",
+              "domainTag": "afi.d2.provider-invocation-input",
+              "value": "393e1b1935f64ae3d38cc6bc1a794b4df0d4323a2d83fa45efd869a9331d34c7"
+            },
+            "providerResultHash": {
+              "algorithm": "sha256",
+              "canonicalizationVersion": "afi.hash.v1",
+              "domainTag": "afi.d2.provider-result",
+              "value": "5c45288c3722da629f29b72dc38d2a5cbc189f527d595f2ee131cda5be871bf3"
+            },
+            "categoryResultHash": {
+              "algorithm": "sha256",
+              "canonicalizationVersion": "afi.hash.v1",
+              "domainTag": "afi.d2.lane-output",
+              "value": "130f513d32f42276ce0effd69e986aa3cb79e2ed0952880713c5bff4b7606a77"
+            },
+            "status": "succeeded"
+          },
+          {
+            "schema": "afi.provider-invocation-proof.v1",
+            "category": "sentiment",
+            "resultSchema": "afi.enrichment.sentiment.v1",
+            "provider": {
+              "providerId": "afi-provider-sentiment-cftc-cot",
+              "recordVersion": "1.0.0",
+              "recordFingerprint": {
+                "algorithm": "sha256",
+                "canonicalizationVersion": "afi.hash.v1",
+                "domainTag": "afi.d2.provider-record",
+                "value": "869f91b44d2e3dfbbdaa99bfca467bcb56120fd2322614eaa404c709b2cd96d5"
+              },
+              "executionClass": "remote",
+              "deterministic": false
+            },
+            "providerInstance": {
+              "providerInstanceId": "afi-instance-reference-sentiment-cftc-cot",
+              "recordVersion": "1.0.0",
+              "recordFingerprint": {
+                "algorithm": "sha256",
+                "canonicalizationVersion": "afi.hash.v1",
+                "domainTag": "afi.d2.provider-instance-record",
+                "value": "ff9cdd5e2d4a00cdeba9f36953b8a0db7588e6ba74a2a26bd55a6791491d7ec9"
+              }
+            },
+            "adapter": {
+              "adapterId": "afi-adapter-sentiment-cftc-cot",
+              "adapterVersion": "1.0.0",
+              "transportKind": "http"
+            },
+            "credential": {
+              "mode": "keyless"
+            },
+            "invocationInputHash": {
+              "algorithm": "sha256",
+              "canonicalizationVersion": "afi.hash.v1",
+              "domainTag": "afi.d2.provider-invocation-input",
+              "value": "233c0b733de688a07c7a78dccd9063c7f1b43a0782d18521730aae4c90854f12"
+            },
+            "providerResultHash": {
+              "algorithm": "sha256",
+              "canonicalizationVersion": "afi.hash.v1",
+              "domainTag": "afi.d2.provider-result",
+              "value": "dcea1362863d8b4df2db5097855d2414754a8366a004d63378bad85740ba8026"
+            },
+            "categoryResultHash": {
+              "algorithm": "sha256",
+              "canonicalizationVersion": "afi.hash.v1",
+              "domainTag": "afi.d2.lane-output",
+              "value": "d1154daf0ebfa2c00687c968b6787002ace93fe93034707326ced01d727f5dbc"
+            },
+            "status": "succeeded"
+          },
+          {
+            "schema": "afi.provider-invocation-proof.v1",
+            "category": "technical",
+            "resultSchema": "afi.enrichment.technical.v1",
+            "provider": {
+              "providerId": "afi-provider-technical-local",
+              "recordVersion": "1.0.0",
+              "recordFingerprint": {
+                "algorithm": "sha256",
+                "canonicalizationVersion": "afi.hash.v1",
+                "domainTag": "afi.d2.provider-record",
+                "value": "71b3c1d915c53c7aa759e00eaf8433061d954d93cbdfd614e41b1ba1083b38ce"
+              },
+              "executionClass": "local",
+              "deterministic": true
+            },
+            "providerInstance": {
+              "providerInstanceId": "afi-instance-reference-technical-local",
+              "recordVersion": "1.0.0",
+              "recordFingerprint": {
+                "algorithm": "sha256",
+                "canonicalizationVersion": "afi.hash.v1",
+                "domainTag": "afi.d2.provider-instance-record",
+                "value": "c1fb9e8cc043c3cade28921ff2ce69712a228065c45efced3d7133876b108499"
+              }
+            },
+            "adapter": {
+              "adapterId": "afi-adapter-technical-local",
+              "adapterVersion": "1.0.0",
+              "transportKind": "in-process"
+            },
+            "credential": {
+              "mode": "keyless"
+            },
+            "invocationInputHash": {
+              "algorithm": "sha256",
+              "canonicalizationVersion": "afi.hash.v1",
+              "domainTag": "afi.d2.provider-invocation-input",
+              "value": "7b5d6e977b78a3fb060c93c97746f08391f19f2f2fddcb1b66341040e76c2a7a"
+            },
+            "providerResultHash": {
+              "algorithm": "sha256",
+              "canonicalizationVersion": "afi.hash.v1",
+              "domainTag": "afi.d2.provider-result",
+              "value": "b2ebc05b02a74446e131fe510933f0f94068dfdce3917403c37cd052e144a79b"
+            },
+            "categoryResultHash": {
+              "algorithm": "sha256",
+              "canonicalizationVersion": "afi.hash.v1",
+              "domainTag": "afi.d2.lane-output",
+              "value": "4d6f2f1485b431f07a342fc6099ccaea8c71c1eb3a04335945db36a4b9d49815"
+            },
+            "priceSource": "blofin",
+            "status": "succeeded"
+          }
+        ],
+        "recordHash": {
+          "algorithm": "sha256",
+          "canonicalizationVersion": "afi.hash.v1",
+          "domainTag": "afi.d2.evidence-record",
+          "value": "e44ada225497175f0257358aa873b2d6a34c0b6887ed14f51b0e79e626ec23dd"
+        },
+        "replayHash": {
+          "algorithm": "sha256",
+          "canonicalizationVersion": "afi.hash.v1",
+          "domainTag": "afi.d2.evidence-replay",
+          "value": "d73585af9b636be859a6f7cfff581b27d219763c1d029aab0d9111d6aa01e31f"
+        },
+        "scoredSignal": {
+          "schema": "afi.scored-signal.v1",
+          "signalId": "sig-d2-20260719-000501",
+          "analystId": "froggy",
+          "strategyId": "trend_pullback_v1",
+          "strategyVersion": "1.0.0",
+          "direction": "long",
+          "riskBucket": "medium",
+          "conviction": 0.72,
+          "uwrScore": 0.81,
+          "uwrAxes": {
+            "structure": 0.8,
+            "execution": 0.7,
+            "risk": 0.85,
+            "insight": 0.9
+          },
+          "evaluatedAt": "2026-01-15T12:00:00Z",
+          "provenanceRecordRef": "provenance-record:sig-d2-20260719-000501",
+          "outputHash": {
+            "algorithm": "sha256",
+            "canonicalizationVersion": "afi.hash.v1",
+            "domainTag": "afi.d2.scored-output",
+            "value": "3f79bb7b435b05321651daefd374cdc681dc06faa65e374e38337b88ca046dea"
+          }
+        },
+        "provenanceRecord": {
+          "schema": "afi.provenance-record.v1",
+          "signalId": "sig-d2-20260719-000501",
+          "canonicalizationVersion": "afi.hash.v1",
+          "inputHash": {
+            "algorithm": "sha256",
+            "canonicalizationVersion": "afi.hash.v1",
+            "domainTag": "afi.d2.signal-input",
+            "value": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          },
+          "enrichmentHash": {
+            "algorithm": "sha256",
+            "canonicalizationVersion": "afi.hash.v1",
+            "domainTag": "afi.d2.enrichment-bundle",
+            "value": "3e23e8160039594a33894f6564e1b1348bbd7a0088d42c4acb73eeaed59c009d"
+          },
+          "outputHash": {
+            "algorithm": "sha256",
+            "canonicalizationVersion": "afi.hash.v1",
+            "domainTag": "afi.d2.scored-output",
+            "value": "3f79bb7b435b05321651daefd374cdc681dc06faa65e374e38337b88ca046dea"
+          },
+          "evidenceRefs": [
+            {
+              "evidenceId": "ev-price-context-sig-d2-20260719-000501",
+              "sourceRef": "src-exchange-blofin-api",
+              "evidenceHash": {
+                "algorithm": "sha256",
+                "canonicalizationVersion": "afi.hash.v1",
+                "domainTag": "afi.d2.evidence",
+                "value": "ca978112ca1bbdcafac231b39a23dc4da786eff8147c4e72b9807785afee48bb"
+              },
+              "asOf": "2026-01-15T12:00:00Z",
+              "redactionStatus": "disclosed"
+            }
+          ],
+          "sourceDisclosureRefs": [
+            "src-exchange-blofin-api"
+          ],
+          "replayProfileRef": "replay-profile:sig-d2-20260719-000501",
+          "domainTags": [
+            "afi.d2.signal-input",
+            "afi.d2.enrichment-bundle",
+            "afi.d2.scored-output",
+            "afi.d2.evidence",
+            "afi.d2.provider-record",
+            "afi.d2.provider-instance-record",
+            "afi.d2.provider-invocation-input",
+            "afi.d2.provider-result",
+            "afi.d2.lane-output",
+            "afi.d2.evidence-record",
+            "afi.d2.evidence-replay"
+          ],
+          "schemaVersions": {
+            "input": "afi.usignal.v1.1",
+            "envelope": "afi.analyst-input-envelope.v1",
+            "output": "afi.scored-signal.v1"
+          }
+        }
+      },
+      "expectedSha256": "d73585af9b636be859a6f7cfff581b27d219763c1d029aab0d9111d6aa01e31f"
+    },
+    {
+      "name": "category-result-aiMl",
+      "description": "Per-lane projections for the aiMl lane over the governed enrichment valid vector (examples/enrichment/aiml/v1/vectors/valid/aiml-result.json): categoryResultHash commits to the FULL category result consumed by the join (domain afi.d2.lane-output); providerResultHash commits to the result minus its category property (domain afi.d2.provider-result). These are the exact values the v3 canonical example's aiMl proof pins.",
+      "category": "aiMl",
+      "fixtureRef": "examples/enrichment/aiml/v1/vectors/valid/aiml-result.json",
+      "input": {
+        "category": "aiMl",
+        "forecast": {
+          "direction": "short",
+          "conviction": 0.4
+        },
+        "regime": {
+          "label": "panic_bear"
+        },
+        "riskFlag": true
+      },
+      "categoryResultDomainTag": "afi.d2.lane-output",
+      "expectedCategoryResultSha256": "cbf225a936b3df1bc58a8e2d2e46e2092782efb7184313d035fa67bd16864a4c",
+      "providerResultDomainTag": "afi.d2.provider-result",
+      "providerResultExcludedFields": [
+        "category"
+      ],
+      "expectedProviderResultSha256": "9649faac015e5d6926d451e32f66310c59f74fbc1e1b9b334d7d03c0418e78aa"
+    },
+    {
+      "name": "category-result-news",
+      "description": "Per-lane projections for the news lane over the governed enrichment valid vector (examples/enrichment/news/v1/vectors/valid/news-result.json): categoryResultHash commits to the FULL category result consumed by the join (domain afi.d2.lane-output); providerResultHash commits to the result minus its category property (domain afi.d2.provider-result). These are the exact values the v3 canonical example's news proof pins.",
+      "category": "news",
+      "fixtureRef": "examples/enrichment/news/v1/vectors/valid/news-result.json",
+      "input": {
+        "category": "news",
+        "news": {
+          "shockScore": 0.42,
+          "articleCount": 7,
+          "topHeadline": "BTC ETF inflows rise",
+          "sentiment": "positive",
+          "windowHours": 4
+        },
+        "newsFeatures": {
+          "shock": 0.42,
+          "volume": 7,
+          "polarity": 0.31
+        }
+      },
+      "categoryResultDomainTag": "afi.d2.lane-output",
+      "expectedCategoryResultSha256": "058289fbe9462c2564dfc9b9b9002f00a6ee4500d18f07fb15d1c605475eed9d",
+      "providerResultDomainTag": "afi.d2.provider-result",
+      "providerResultExcludedFields": [
+        "category"
+      ],
+      "expectedProviderResultSha256": "7ad4bce130a6da52bb6f787b601f8209fc70422bd075a2d4602a11d7e5cc8753"
+    },
+    {
+      "name": "category-result-pattern",
+      "description": "Per-lane projections for the pattern lane over the governed enrichment valid vector (examples/enrichment/pattern/v1/vectors/valid/pattern-result.json): categoryResultHash commits to the FULL category result consumed by the join (domain afi.d2.lane-output); providerResultHash commits to the result minus its category property (domain afi.d2.provider-result). These are the exact values the v3 canonical example's pattern proof pins.",
+      "category": "pattern",
+      "fixtureRef": "examples/enrichment/pattern/v1/vectors/valid/pattern-result.json",
+      "input": {
+        "category": "pattern",
+        "series": {
+          "seriesId": "series-a",
+          "length": 128,
+          "indexBasis": "position"
+        },
+        "motifs": [
+          {
+            "windowSize": 8,
+            "index": 4,
+            "neighborIndex": 60,
+            "similarity": 0.9
+          }
+        ],
+        "discords": [
+          {
+            "windowSize": 8,
+            "index": 110,
+            "anomalyScore": 0.75
+          }
+        ],
+        "changePoints": [
+          {
+            "index": 64,
+            "magnitude": 0.5
+          }
+        ],
+        "pivots": [
+          {
+            "index": 30,
+            "kind": "support",
+            "level": 0.1,
+            "prominence": 0.2
+          }
+        ]
+      },
+      "categoryResultDomainTag": "afi.d2.lane-output",
+      "expectedCategoryResultSha256": "130f513d32f42276ce0effd69e986aa3cb79e2ed0952880713c5bff4b7606a77",
+      "providerResultDomainTag": "afi.d2.provider-result",
+      "providerResultExcludedFields": [
+        "category"
+      ],
+      "expectedProviderResultSha256": "5c45288c3722da629f29b72dc38d2a5cbc189f527d595f2ee131cda5be871bf3"
+    },
+    {
+      "name": "category-result-sentiment",
+      "description": "Per-lane projections for the sentiment lane over the governed enrichment valid vector (examples/enrichment/sentiment/v1/vectors/valid/sentiment-result.json): categoryResultHash commits to the FULL category result consumed by the join (domain afi.d2.lane-output); providerResultHash commits to the result minus its category property (domain afi.d2.provider-result). These are the exact values the v3 canonical example's sentiment proof pins.",
+      "category": "sentiment",
+      "fixtureRef": "examples/enrichment/sentiment/v1/vectors/valid/sentiment-result.json",
+      "input": {
+        "category": "sentiment",
+        "axes": [
+          {
+            "axis": "openInterest",
+            "score": 0.2
+          },
+          {
+            "axis": "longShort",
+            "score": -0.8,
+            "confidence": 0.9
+          },
+          {
+            "axis": "impliedVolatility",
+            "score": 0,
+            "horizon": "daily"
+          }
+        ]
+      },
+      "categoryResultDomainTag": "afi.d2.lane-output",
+      "expectedCategoryResultSha256": "d1154daf0ebfa2c00687c968b6787002ace93fe93034707326ced01d727f5dbc",
+      "providerResultDomainTag": "afi.d2.provider-result",
+      "providerResultExcludedFields": [
+        "category"
+      ],
+      "expectedProviderResultSha256": "dcea1362863d8b4df2db5097855d2414754a8366a004d63378bad85740ba8026"
+    },
+    {
+      "name": "category-result-technical",
+      "description": "Per-lane projections for the technical lane over the governed enrichment valid vector (examples/enrichment/technical/v1/vectors/valid/technical-result.json): categoryResultHash commits to the FULL category result consumed by the join (domain afi.d2.lane-output); providerResultHash commits to the result minus its category property (domain afi.d2.provider-result). These are the exact values the v3 canonical example's technical proof pins.",
+      "category": "technical",
+      "fixtureRef": "examples/enrichment/technical/v1/vectors/valid/technical-result.json",
+      "input": {
+        "category": "technical",
+        "technical": {
+          "rsi14": 61.2,
+          "ema20": 42120.5,
+          "atr14": 355.7,
+          "trend": "up"
+        },
+        "candles": [
+          {
+            "t": 1700000000000,
+            "o": 41900,
+            "h": 42200,
+            "l": 41850,
+            "c": 42120,
+            "v": 1234.5
+          },
+          {
+            "t": 1700003600000,
+            "o": 42120,
+            "h": 42400,
+            "l": 42050,
+            "c": 42310,
+            "v": 987.1
+          }
+        ],
+        "priceSource": "blofin"
+      },
+      "categoryResultDomainTag": "afi.d2.lane-output",
+      "expectedCategoryResultSha256": "4d6f2f1485b431f07a342fc6099ccaea8c71c1eb3a04335945db36a4b9d49815",
+      "providerResultDomainTag": "afi.d2.provider-result",
+      "providerResultExcludedFields": [
+        "category"
+      ],
+      "expectedProviderResultSha256": "b2ebc05b02a74446e131fe510933f0f94068dfdce3917403c37cd052e144a79b"
+    }
+  ]
+}

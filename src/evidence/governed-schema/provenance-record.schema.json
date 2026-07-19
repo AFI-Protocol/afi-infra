@@ -11,7 +11,7 @@
     "District 2 hash doctrine — volatile processing timestamps are not canonical hash material; normalized evidence/domain timestamps are"
   ],
   "x-afiOpenItems": {
-    "PR-O1": "Whether enrichmentHash binds a per-lane hash list vs a single bundle hash — this draft models a single optional enrichment/bundle hash; per-lane hashes live in EnrichmentProvenance.laneOutputHash.",
+    "PR-O1": "RESOLVED by EV3-GOV D-EV3-4(4): per-lane commitments live in afi.provider-invocation-proof.v1 categoryResultHash values on the v3 evidence record; the single bundle enrichmentHash is retained at the composition layer. This draft's shape is unchanged.",
     "PR-O2": "schemaVersions stage-key registry — OPEN; free-form stage → schema-id map in this draft."
   },
   "type": "object",
