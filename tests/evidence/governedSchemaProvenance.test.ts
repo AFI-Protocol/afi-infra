@@ -68,7 +68,7 @@ describe("vendored governed schema provenance (MANIFEST integrity)", () => {
   });
 
   it("pins the EV3-CONTRACT closure at the authorizing afi-config commit", () => {
-    expect(manifest.afiConfigCommit).toBe("e5f17161f957c00913b8763919380e92b0b95c39");
+    expect(manifest.afiConfigCommit).toBe("9497afc24bf380b21701bee453c13ebdf8881a26");
     expect(manifest.governedSchemaIdV3).toBe(
       "https://afi-protocol.org/schemas/scored-signal-evidence/v3/scored-signal-evidence.schema.json"
     );

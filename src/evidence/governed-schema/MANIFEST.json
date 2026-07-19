@@ -1,7 +1,7 @@
 {
   "$comment": "Provenance of the vendored governed schema closure (Evidence V3, EV3-GOV D-EV3-1/D-EV3-8: the closure gains the v3 + invocation-proof members and drops every V2 member). Each vendored file is a byte-identical copy of afi-config@afiConfigCommit at afiConfigPath. Enforced by tests/evidence/governedSchemaProvenance.test.ts (always) and scripts/verify-governed-schema-provenance.mjs (CI, against a pinned checkout). Do not hand-edit; regenerate only from an owner-approved afi-config commit.",
   "afiConfigRepo": "https://github.com/AFI-Protocol/afi-config",
-  "afiConfigCommit": "e5f17161f957c00913b8763919380e92b0b95c39",
+  "afiConfigCommit": "9497afc24bf380b21701bee453c13ebdf8881a26",
   "governedSchemaIdV3": "https://afi-protocol.org/schemas/scored-signal-evidence/v3/scored-signal-evidence.schema.json",
   "sources": {
     "src/evidence/governed-schema/scored-signal-evidence.v3.schema.json": {
