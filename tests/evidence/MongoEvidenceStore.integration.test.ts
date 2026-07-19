@@ -1,13 +1,14 @@
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { MongoScoredSignalEvidenceStore } from "../../src/evidence/MongoScoredSignalEvidenceStore.js";
 import {
+  EvidenceHashMismatchError,
   EvidenceIdempotencyConflictError,
   EvidenceImmutableError,
   EvidenceStoreError,
   EvidenceValidationError,
-  type ScoredSignalEvidenceRecordV2,
+  type ScoredSignalEvidenceRecordV3,
 } from "../../src/evidence/types.js";
-import { validBaseV2, deepClone } from "./fixtures.js";
+import { validBaseV3, withRecomputedHashes, deepClone } from "./fixtures.js";
 
 // Real-MongoDB integration. Requires a replica set (supersession uses a
 // multi-document transaction). Env-gated so local runs without Mongo skip — but
@@ -17,23 +18,27 @@ const mongoUri = process.env.AFI_EVIDENCE_MONGODB_URI;
 const hasMongo = Boolean(mongoUri);
 const required = process.env.AFI_REQUIRE_MONGO === "1";
 
-const PRED_HASH = {
-  algorithm: "sha256" as const,
-  canonicalizationVersion: "afi.hash.v1",
-  domainTag: "afi.d2.scored-signal-evidence",
-  value: "1b16b1df538ba12dc3f97edbb85caa7050d46c148134290feba80f8236c83db9",
-};
-
-/** Build a valid governed v2 record (REQUIRED composition) with `signalId`
- *  threaded through every leg. */
-function record(signalId: string, uwrScore = 0.55): ScoredSignalEvidenceRecordV2 {
-  const r = validBaseV2();
+/** Build a valid governed v3 record (five-proof tuple + verified record
+ *  hashes) with `signalId` threaded through every leg and the record-level
+ *  commitments recomputed under the KAT-proven composition law. */
+function record(signalId: string, uwrScore = 0.55): ScoredSignalEvidenceRecordV3 {
+  const r = validBaseV3();
   r.signalId = signalId;
   r.scoredSignal.signalId = signalId;
   r.scoredSignal.uwrScore = uwrScore;
   r.scoredSignal.provenanceRecordRef = `provenance-record:${signalId}`;
   r.provenanceRecord.signalId = signalId;
-  return r;
+  return withRecomputedHashes(r);
+}
+
+/** A hash-admissible superseding record with the DEFINED chain link
+ *  (supersedesRecordHash = the predecessor's recordHash, EV3-GOV D-EV3-4(6)). */
+function superseding(base: ScoredSignalEvidenceRecordV3, uwrScore: number): ScoredSignalEvidenceRecordV3 {
+  const r = deepClone(base);
+  r.recordVersion = 2;
+  r.supersedesRecordHash = deepClone(base.recordHash);
+  r.scoredSignal.uwrScore = uwrScore;
+  return withRecomputedHashes(r);
 }
 
 if (required && !hasMongo) {
@@ -77,7 +82,7 @@ if (required && !hasMongo) {
 
       const stored = await store.getBySignalId(id);
       expect(stored?.signalId).toBe(id);
-      expect(stored?.schema).toBe("afi.scored-signal-evidence.v2");
+      expect(stored?.schema).toBe("afi.scored-signal-evidence.v3");
     });
 
     it("rejects a conflicting duplicate (same signalId, different content)", async () => {
@@ -90,15 +95,23 @@ if (required && !hasMongo) {
       expect(stored?.scoredSignal.uwrScore).toBe(0.55); // append-once: not overwritten
     });
 
-    it("supersedes successfully and the replay bundle carries composition", async () => {
+    it("rejects a mis-hashed record before insert (HASH_VERIFICATION; nothing persisted)", async () => {
+      const id = sid("mis-hashed");
+      const bad = record(id);
+      bad.recordHash = { ...bad.recordHash, value: "0".repeat(64) };
+      await expect(store.submit(bad)).rejects.toBeInstanceOf(EvidenceHashMismatchError);
+      const badReplay = record(id);
+      badReplay.replayHash = { ...badReplay.replayHash, value: "f".repeat(64) };
+      await expect(store.submit(badReplay)).rejects.toBeInstanceOf(EvidenceHashMismatchError);
+      expect(await store.getBySignalId(id)).toBeNull(); // never persisted
+    });
+
+    it("supersedes via the DEFINED chain link and the replay bundle carries the v3 surfaces", async () => {
       const id = sid("supersede");
       const base = record(id, 0.55);
       await store.submit(base);
 
-      const next = deepClone(record(id, 0.6));
-      next.recordVersion = 2;
-      next.supersedesRecordHash = PRED_HASH;
-
+      const next = superseding(base, 0.6);
       const res = await store.supersede(next);
       expect(res.outcome).toBe("superseded");
       expect(res.toVersion).toBe(2);
@@ -106,6 +119,7 @@ if (required && !hasMongo) {
       const current = await store.getBySignalId(id);
       expect(current?.recordVersion).toBe(2);
       expect(current?.scoredSignal.uwrScore).toBe(0.6);
+      expect(current?.supersedesRecordHash?.value).toBe(base.recordHash.value);
 
       const bundle = await store.getReplayBundle(id);
       expect(bundle?.signalId).toBe(id);
@@ -113,20 +127,41 @@ if (required && !hasMongo) {
       expect(bundle?.provenanceRecord.inputHash).toBeTruthy();
       expect(bundle?.composition).toEqual(base.composition);
       expect(bundle?.composition?.schema).toBe("afi.composition-ref.v1");
+      expect(bundle?.providerInvocations.map((p) => p.category)).toEqual([
+        "aiMl",
+        "news",
+        "pattern",
+        "sentiment",
+        "technical",
+      ]);
+      expect(bundle?.recordHash.value).toBe(next.recordHash.value);
+      expect(bundle?.replayHash.value).toBe(next.replayHash.value);
+    });
+
+    it("rejects a broken supersession chain link (supersedesRecordHash != predecessor recordHash)", async () => {
+      const id = sid("chain-broken");
+      const base = record(id, 0.55);
+      await store.submit(base);
+
+      const next = deepClone(base);
+      next.recordVersion = 2;
+      next.supersedesRecordHash = { ...deepClone(base.recordHash), value: "a".repeat(64) };
+      next.scoredSignal.uwrScore = 0.6;
+      withRecomputedHashes(next); // self-hash-valid, chain link wrong
+
+      await expect(store.supersede(next)).rejects.toBeInstanceOf(EvidenceStoreError);
+      expect((await store.getBySignalId(id))?.recordVersion ?? 1).toBe(1);
     });
 
     it("resolves concurrent supersedes to exactly one winner (typed conflict for the loser)", async () => {
       const id = sid("concurrent");
-      await store.submit(record(id, 0.55));
+      const base = record(id, 0.55);
+      await store.submit(base);
 
-      const mk = (score: number) => {
-        const r = deepClone(record(id, score));
-        r.recordVersion = 2;
-        r.supersedesRecordHash = PRED_HASH;
-        return r;
-      };
-
-      const results = await Promise.allSettled([store.supersede(mk(0.6)), store.supersede(mk(0.7))]);
+      const results = await Promise.allSettled([
+        store.supersede(superseding(base, 0.6)),
+        store.supersede(superseding(base, 0.7)),
+      ]);
       const fulfilled = results.filter((r) => r.status === "fulfilled");
       expect(fulfilled).toHaveLength(1); // exactly one wins
       results
@@ -144,11 +179,10 @@ if (required && !hasMongo) {
       const fin = record(id);
       fin.lifecycleState = "FINALIZED";
       fin.finalized = true;
+      withRecomputedHashes(fin);
       await store.submit(fin);
 
-      const attempt = deepClone(fin);
-      attempt.recordVersion = 2;
-      attempt.supersedesRecordHash = PRED_HASH;
+      const attempt = superseding(fin, 0.6);
       await expect(store.supersede(attempt)).rejects.toBeInstanceOf(EvidenceImmutableError);
     });
 
@@ -157,25 +191,26 @@ if (required && !hasMongo) {
       expect(await store.getReplayBundle(sid("missing"))).toBeNull();
     });
 
-    it("rejects a record without composition (SCHEMA_VALIDATION, fail closed)", async () => {
-      const { composition: _omitted, ...noComposition } = record(sid("nocomp")) as any;
-      await expect(store.submit(noComposition)).rejects.toBeInstanceOf(EvidenceValidationError);
+    it("rejects a record without the five-proof tuple (SCHEMA_VALIDATION, fail closed)", async () => {
+      const { providerInvocations: _omitted, ...noProofs } = record(sid("noproofs")) as never as Record<string, unknown>;
+      await expect(
+        store.submit(noProofs as never)
+      ).rejects.toBeInstanceOf(EvidenceValidationError);
     });
 
-    it("rejects an unknown evidence schema const (SCHEMA_VALIDATION)", async () => {
-      const bad: any = record(sid("unknown-const"));
-      bad.schema = "afi.scored-signal-evidence.v3";
-      await expect(store.submit(bad)).rejects.toBeInstanceOf(EvidenceValidationError);
-    });
+    it("rejects prior-version schema consts (v3 is the ONLY accepted write contract)", async () => {
+      const id = sid("v2-const");
+      // A v2-shaped record: the v3 base minus the three additions, carrying the v2 const.
+      const v2Shaped: Record<string, unknown> = { ...record(id) };
+      v2Shaped.schema = "afi.scored-signal-evidence.v2";
+      delete v2Shaped.providerInvocations;
+      delete v2Shaped.recordHash;
+      delete v2Shaped.replayHash;
+      await expect(store.submit(v2Shaped as never)).rejects.toBeInstanceOf(EvidenceValidationError);
 
-    it("rejects a v1-const record (v2 is the ONLY accepted write contract)", async () => {
-      const id = sid("v1-const");
-      // A v1-shaped record: the v2 base minus composition, carrying the v1 const.
-      const v1Shaped: any = record(id);
-      v1Shaped.schema = "afi.scored-signal-evidence.v1";
-      delete v1Shaped.composition;
-
-      await expect(store.submit(v1Shaped)).rejects.toBeInstanceOf(EvidenceValidationError);
+      const v1Const: Record<string, unknown> = { ...record(id) };
+      v1Const.schema = "afi.scored-signal-evidence.v1";
+      await expect(store.submit(v1Const as never)).rejects.toBeInstanceOf(EvidenceValidationError);
       expect(await store.getBySignalId(id)).toBeNull(); // nothing persisted
     });
   }

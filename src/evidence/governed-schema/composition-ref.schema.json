@@ -7,7 +7,7 @@
   "x-afiStatus": "governed-contract",
   "x-afiPartOf": "AFI Factory — Analyst-Configurable Pipelines V1 (FACTORY-CONTRACT)",
   "x-afiDoctrineRefs": [
-    "afi-governance/decisions/factory-configurable-pipelines-v1 — authorizes the canonical V1 contract family, including this composition provenance object and afi.scored-signal-evidence.v2 which requires it",
+    "afi-governance/decisions/factory-configurable-pipelines-v1 — authorizes the canonical V1 contract family, including this composition provenance object; the current evidence contract afi.scored-signal-evidence.v3 (EV3-GOV) requires it unchanged",
     "reports/afi-configurable-dag-live-runtime-reconciliation.md §9 N1/N5 — canonical graph provenance on the evidence record requires a new schema version + decision; a dedicated composition object avoids binding composition-versioning semantics to strategyVersion",
     "afi-governance/decisions/persistence-v0.1.md (MONGO-GOV) D-MONGO-9 — replay/verify sufficiency: the composition pins let a verifier reconstruct WHAT composed the score, deterministically",
     "District 2 hash doctrine — volatile processing timestamps are not canonical hash material; the execution summary hashed here MUST be timestamp-free"

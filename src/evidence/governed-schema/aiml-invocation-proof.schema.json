@@ -1,0 +1,137 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://afi-protocol.org/schemas/aiml-invocation-proof/v1/aiml-invocation-proof.schema.json",
+  "title": "AFI AiMlInvocationProof v1 (EV3-CONTRACT — nested Tiny Brains invocation proof)",
+  "description": "The deterministic, non-secret projection of one SUCCESSFUL tiny-brains.aiml-invocation.v1 record (afi.aiml-invocation-proof.v1), carried inside the aiMl member of afi.provider-invocation-proof.v1 on every afi.scored-signal-evidence.v3 record. It binds the orchestration identity chain of the invocation that occurred: profileId + profileVersion, resolverId + resolverVersion, the service code/config fingerprint, the normalized Tiny Brains input hash and final output hash, invocation status succeeded, and — per required expert — expertId, expertVersion, deterministic/probabilistic posture, status succeeded, the expert output hash, and the model artifact fingerprint set. Hashes and identifiers ONLY: no raw candles, prompts, filesystem paths, weights, or expert payloads may appear. Volatile timing facts (startedAt/endedAt/durations) are STRUCTURALLY EXCLUDED (additionalProperties:false leaves them nowhere to live). The hashes on this object are OPAQUE service-law commitments, NOT CanonicalHash objects (see x-afiConstraints.opaqueServiceLawHashes).",
+  "$comment": "BOUNDARY (EV3-CONTRACT): schema/contract only — NO Tiny Brains orchestration, profile, resolver, expert, artifact, or kernel change is implied by this file (D-EV3-3 authorizes exactly one bounded additive response block so these facts can cross the service boundary). Failure responses never yield a scored V3 record, so this proof admits only status 'succeeded'. Proof facts are carried, never consumed: no lane, join, analyst, scorer, UWR, or decay path may read them (D-EV3-2).",
+  "x-afiStatus": "governed-contract",
+  "x-afiPartOf": "AFI Evidence V3 and Provider Invocation Provenance v0.1 (EV3-GOV)",
+  "x-afiDoctrineRefs": [
+    "afi-governance/decisions/evidence-v3-provider-provenance-v0.1 (EV3-GOV) D-EV3-3 — the aiMl nested invocation proof: the deterministic, non-secret projection of the successful tiny-brains.aiml-invocation.v1 record, with volatile timing facts structurally excluded; the owner explicitly authorizes these service-internal identities (expert ids, artifact fingerprints) in canonical evidence",
+    "afi-governance/decisions/evidence-v3-provider-provenance-v0.1 (EV3-GOV) D-EV3-4(5) — Tiny Brains hashes are opaque commitments pinned to the service's own canonicalization law (tiny-brains.hash.v1), NOT CanonicalHash objects; the reactor client verifies the final outputHash by KAT-proven recomputation, fail-closed",
+    "afi-governance/decisions/evidence-v3-provider-provenance-v0.1 (EV3-GOV) D-EV3-6 — credential-safety law: no secret, key, token, header, path, or raw payload may appear on any evidence surface",
+    "afi-governance/decisions/provider-byok-foundations-v0.1 (PBF-GOV) D-PBF-3 — Tiny Brains subordination posture: one resolved aiMl result, no scoring authority; unchanged by this proof"
+  ],
+  "x-afiConstraints": {
+    "expertOrdering": "TOOLING-ENFORCED (not JSON-Schema-draft-07-enforceable): the experts array MUST be sorted ascending by case-sensitive lexicographic expertId. The Evidence V3 builder fails closed on a mis-ordered or duplicate expert list (D-EV3-5(3)).",
+    "opaqueServiceLawHashes": "The hex digest fields on this object (codeConfigFingerprint, inputHash, outputHash, expert outputHash values, artifactFingerprints values) are OPAQUE commitments computed under the Tiny Brains service law pinned by hashLaw (tiny-brains.hash.v1 — Python canonical JSON: lexicographically sorted keys, compact separators, UTF-8, Python shortest-round-trip float repr). They are NOT afi.hash.v1 CanonicalHash objects and MUST NOT be recomputed under either composition- or evidence-layer canonicalization law; the reactor client verifies the service's final outputHash by exact recomputation under a KAT-proven implementation of the service law, fail-closed (D-EV3-4(5)).",
+    "volatileTimingExcluded": "Volatile timing facts (startedAt, endedAt, durations, attempt counts, retry/rate-limit facts, transport noise) are STRUCTURALLY EXCLUDED: additionalProperties:false at every level leaves them nowhere to live. They remain bounded operational diagnostics in runtime logs and never enter canonical evidence or any hashed preimage (D-EV3-4(7)).",
+    "noRawMaterial": "No raw candle series, prompt, model filesystem path, weight blob, or expert payload may appear on this object — hashes and identifiers only (D-EV3-3, D-EV3-6). additionalProperties:false plus the enumerated field set is the primary structural defense; the synthetic-marker test obligation (D-EV3-4(8)) is the empirical one.",
+    "successOnly": "status is const 'succeeded' at both the invocation and the per-expert level: under D-EV3-5(1) a failed lane yields no scored evaluation and no evidence record, so no failed invocation projection is representable here. Failure responses remain bounded operational diagnostics outside this contract."
+  },
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "profileId",
+    "profileVersion",
+    "resolverId",
+    "resolverVersion",
+    "codeConfigFingerprint",
+    "hashLaw",
+    "inputHash",
+    "outputHash",
+    "status",
+    "experts"
+  ],
+  "properties": {
+    "schema": {
+      "type": "string",
+      "const": "afi.aiml-invocation-proof.v1",
+      "description": "Schema-id version of the nested Tiny Brains invocation proof."
+    },
+    "profileId": {
+      "type": "string",
+      "minLength": 1,
+      "description": "The governed Tiny Brains orchestration profile that ran (e.g. 'froggy-reference-v1'). MUST equal the model the selected ProviderInstance declares; the reactor client validates the service's profile echo — profileId AND profileVersion — fail-closed (D-EV3-3)."
+    },
+    "profileVersion": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Version of the orchestration profile that ran, as echoed by the service and validated fail-closed by the reactor client (D-EV3-3 profile-echo hardening)."
+    },
+    "resolverId": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Identity of the deterministic resolver that combined the expert outputs into the one resolved aiMl result (D-PBF-3 subordination: the resolver confers no scoring authority)."
+    },
+    "resolverVersion": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Version of the resolver that ran."
+    },
+    "codeConfigFingerprint": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$",
+      "description": "The service's code/config fingerprint: an opaque hex commitment to the Tiny Brains service code + configuration identity under which the invocation ran. Service-law material (x-afiConstraints.opaqueServiceLawHashes); never a filesystem path."
+    },
+    "hashLaw": {
+      "type": "string",
+      "const": "tiny-brains.hash.v1",
+      "description": "Explicit pin of the service canonicalization law every hex digest on this object was computed under. Distinct from afi.hash.v1: these are opaque boundary commitments, not CanonicalHash objects (D-EV3-4(5))."
+    },
+    "inputHash": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$",
+      "description": "Opaque service-law commitment to the normalized Tiny Brains invocation input (request payload projection). Never the raw candle series itself."
+    },
+    "outputHash": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$",
+      "description": "Opaque service-law commitment to the final prediction payload (exclusive of the additive invocation block — the existing outputHash law is unchanged, D-EV3-3). The reactor client MUST verify this value by exact recomputation over the received payload under a KAT-proven tiny-brains.hash.v1 implementation, fail-closed (D-EV3-4(5))."
+    },
+    "status": {
+      "type": "string",
+      "const": "succeeded",
+      "description": "Invocation status. Only 'succeeded' is representable: a failed invocation yields no scored evaluation and no evidence record (D-EV3-5(1); x-afiConstraints.successOnly)."
+    },
+    "experts": {
+      "type": "array",
+      "minItems": 1,
+      "description": "Per-required-expert invocation facts, sorted ascending by case-sensitive lexicographic expertId (x-afiConstraints.expertOrdering; tooling-enforced). Identifiers and hashes only.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["expertId", "expertVersion", "posture", "status", "outputHash"],
+        "properties": {
+          "expertId": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Identity of the expert that ran (service-internal identity, expressly authorized to appear in canonical evidence by D-EV3-3)."
+          },
+          "expertVersion": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Version of the expert that ran."
+          },
+          "posture": {
+            "type": "string",
+            "enum": ["deterministic", "probabilistic"],
+            "description": "Deterministic-vs-probabilistic posture of this expert."
+          },
+          "status": {
+            "type": "string",
+            "const": "succeeded",
+            "description": "Per-expert status. Only 'succeeded' is representable on a scored record (x-afiConstraints.successOnly)."
+          },
+          "outputHash": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$",
+            "description": "Opaque service-law commitment to this expert's output. Never the expert payload itself."
+          },
+          "artifactFingerprints": {
+            "type": "object",
+            "propertyNames": {
+              "minLength": 1
+            },
+            "additionalProperties": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{64}$"
+            },
+            "description": "OPTIONAL model artifact fingerprint set: artifact name -> opaque hex fingerprint (service-law material). Names artifacts by non-secret identity only — never a filesystem path; values are fingerprints, never weights."
+          }
+        }
+      }
+    }
+  }
+}

@@ -2,11 +2,16 @@
 // (MONGO-STORE / Slot 2 of AFI-GOV-PERSISTENCE-IMPL-v0.1).
 //
 // Realizes MONGO-GOV: one FRESH canonical store (D-MONGO-1, Option A) for the
-// governed evidence contract — `afi.scored-signal-evidence.v2` (the active
-// write contract, FACTORY-CONTRACT), the ONLY admissible `schema` const; any
-// other value is rejected as SCHEMA_VALIDATION. ALL other store law (unique
+// governed evidence contract — `afi.scored-signal-evidence.v3` (the SOLE
+// current canonical evidence contract, EV3-GOV D-EV3-1/D-EV3-7), the ONLY
+// admissible `schema` const; any other value is rejected as SCHEMA_VALIDATION.
+// Admission ADDITIONALLY verifies recordHash and replayHash by recomputation
+// under canonical-json-hashing.v1 before insert (D-EV3-7) — an invalid or
+// mis-hashed record is rejected, never persisted. ALL other store law (unique
 // signalId, append-once, idempotency, supersession, continuity, recordVersion)
-// is contract-independent. The sole afi-infra storage mutation path
+// is contract-independent and continues UNCHANGED on the same store surface
+// (same db/collections/indexes — no new collection, no dual V2/V3 write, no
+// fallback reader). The sole afi-infra storage mutation path
 // (D-MONGO-3); a STANDARD collection with a UNIQUE `signalId` index (D-MONGO-6 —
 // NOT time-series, no non-unique fallback); append-once + immutable-after-
 // FINALIZED via versioning-by-supersession (D-MONGO-5); read-by-signalId +
@@ -26,6 +31,7 @@
 
 import type { IScoredSignalEvidenceStore } from "./IScoredSignalEvidenceStore.js";
 import {
+  EvidenceHashMismatchError,
   EvidenceIdempotencyConflictError,
   EvidenceImmutableError,
   EvidencePersistenceError,
@@ -38,7 +44,11 @@ import {
   type SubmitResult,
   type SupersedeResult,
 } from "./types.js";
-import { validateEvidenceSchemaV2 } from "./governedSchema.js";
+import { validateEvidenceSchemaV3 } from "./governedSchema.js";
+import {
+  computeRecordHashValue,
+  computeReplayHashValue,
+} from "./canonicalJsonHashing.js";
 import { checkIdentifierContinuity, isFinalized } from "./identifierContinuity.js";
 
 // --- Minimal structural MongoDB surface (injectable for testing) ------------
@@ -229,12 +239,19 @@ export class MongoScoredSignalEvidenceStore implements IScoredSignalEvidenceStor
         signalId
       );
     }
-    // The supersession chain must be explicit (MONGO-GOV D-MONGO-5). The store
-    // does not compute canonical hashes (District-2 hash doctrine), but it
-    // requires the caller-provided link to the superseded record.
+    // The supersession chain must be explicit (MONGO-GOV D-MONGO-5) and, for
+    // v3 records, its computation is DEFINED (EV3-GOV D-EV3-4(6)): the
+    // caller-provided supersedesRecordHash MUST equal the superseded record's
+    // own recordHash. Fail-closed on a broken chain link.
     if (!record.supersedesRecordHash) {
       throw new EvidenceSupersedeError(
         `supersede() requires supersedesRecordHash linking the superseded record for signalId '${signalId}' (MONGO-GOV D-MONGO-5 supersession chain).`,
+        signalId
+      );
+    }
+    if (record.supersedesRecordHash.value !== currentRecord.recordHash.value) {
+      throw new EvidenceSupersedeError(
+        `supersedesRecordHash does not equal the superseded record's recordHash for signalId '${signalId}': ${record.supersedesRecordHash.value} != ${currentRecord.recordHash.value} (EV3-GOV D-EV3-4(6) defined supersession-chain computation).`,
         signalId
       );
     }
@@ -321,6 +338,11 @@ export class MongoScoredSignalEvidenceStore implements IScoredSignalEvidenceStor
       // Replay/verify sufficiency (MONGO-GOV D-MONGO-9) includes the
       // hash-pinned composition ref — WHAT composed the score.
       composition: record.composition,
+      // v3 (EV3-GOV D-EV3-2/D-EV3-4(6)): the five per-lane invocation proofs
+      // (WHO/WHAT was invoked) + the record-level commitments.
+      providerInvocations: record.providerInvocations,
+      recordHash: record.recordHash,
+      replayHash: record.replayHash,
     };
   }
 
@@ -337,24 +359,26 @@ export class MongoScoredSignalEvidenceStore implements IScoredSignalEvidenceStor
 
   // --- internals ------------------------------------------------------------
 
-  /** Validate against the governed v2 evidence schema AND identifier
-   *  continuity. Both are admission preconditions (MONGO-GOV D-MONGO-3).
-   *  'afi.scored-signal-evidence.v2' is the ONLY admissible `schema` const
-   *  (composition REQUIRED, validated against afi.composition-ref.v1 including
-   *  its CanonicalHash sub-shapes); any other value is rejected as
+  /** Validate against the governed v3 evidence schema, identifier continuity,
+   *  AND the D-EV3-7 recomputation-verified hash admission. All are admission
+   *  preconditions (MONGO-GOV D-MONGO-3, EV3-GOV D-EV3-7).
+   *  'afi.scored-signal-evidence.v3' is the ONLY admissible `schema` const
+   *  (composition + the positional five-proof tuple + recordHash/replayHash
+   *  REQUIRED, validated against the full vendored closure including the
+   *  CanonicalHash sub-shapes); any other value is rejected as
    *  SCHEMA_VALIDATION. */
   private assertGovernedRecord(record: AnyScoredSignalEvidenceRecord): void {
     const schemaConst = (record as { schema?: unknown } | null)?.schema;
-    if (schemaConst !== "afi.scored-signal-evidence.v2") {
+    if (schemaConst !== "afi.scored-signal-evidence.v3") {
       throw new EvidenceValidationError(
         `Record carries an inadmissible evidence schema const '${String(
           schemaConst
-        )}' — the only admissible value is 'afi.scored-signal-evidence.v2'.`,
+        )}' — the only admissible value is 'afi.scored-signal-evidence.v3'.`,
         [],
         (record as { signalId?: string } | null)?.signalId
       );
     }
-    const { valid, errors } = validateEvidenceSchemaV2(record);
+    const { valid, errors } = validateEvidenceSchemaV3(record);
     if (!valid) {
       throw new EvidenceValidationError(
         `Record failed governed ${String(schemaConst)} schema validation.`,
@@ -367,6 +391,37 @@ export class MongoScoredSignalEvidenceStore implements IScoredSignalEvidenceStor
       throw new EvidenceContinuityError(
         `Identifier continuity violated for signalId '${record.signalId}': ${violations.join("; ")}.`,
         violations,
+        record.signalId
+      );
+    }
+    this.assertVerifiedRecordHashes(record);
+  }
+
+  /** D-EV3-7 recomputation-verified admission (EV3-GOV D-EV3-4(6)): recompute
+   *  recordHash and replayHash over the record AS SUBMITTED under the
+   *  composition canonicalization law (canonical-json-hashing.v1) with the
+   *  defined top-level exclusion sets, and reject on any mismatch — the record
+   *  is never persisted. Runs BEFORE the store's recordVersion pinning: the
+   *  optional recordVersion enters the recordHash preimage exactly as the
+   *  submitter committed it (omission means 1 per the governed contract
+   *  without entering the preimage). The implementation is KAT-proven against
+   *  the governed afi-config vectors (kats/hashing/v1 + kats/evidence/v3). */
+  private assertVerifiedRecordHashes(record: AnyScoredSignalEvidenceRecord): void {
+    const recomputedRecord = computeRecordHashValue(record);
+    if (record.recordHash.value !== recomputedRecord) {
+      throw new EvidenceHashMismatchError(
+        "recordHash",
+        record.recordHash.value,
+        recomputedRecord,
+        record.signalId
+      );
+    }
+    const recomputedReplay = computeReplayHashValue(record);
+    if (record.replayHash.value !== recomputedReplay) {
+      throw new EvidenceHashMismatchError(
+        "replayHash",
+        record.replayHash.value,
+        recomputedReplay,
         record.signalId
       );
     }

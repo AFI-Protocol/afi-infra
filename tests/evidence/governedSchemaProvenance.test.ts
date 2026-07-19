@@ -15,6 +15,7 @@ const manifest = JSON.parse(
   readFileSync(join(repoRoot, "src/evidence/governed-schema/MANIFEST.json"), "utf-8")
 ) as {
   afiConfigCommit: string;
+  governedSchemaIdV3: string;
   sources: Record<string, { afiConfigPath: string; sha256: string }>;
 };
 
@@ -36,12 +37,13 @@ describe("vendored governed schema provenance (MANIFEST integrity)", () => {
   it("covers the full runtime schema closure the store loads", () => {
     const covered = Object.keys(manifest.sources);
     [
-      "scored-signal-evidence.v2.schema.json",
+      "scored-signal-evidence.v3.schema.json",
+      "provider-invocation-proof.schema.json",
+      "aiml-invocation-proof.schema.json",
       "composition-ref.schema.json",
       "canonical-hash.schema.json",
       "evidence-ref.schema.json",
       "source-disclosure-profile.schema.json",
-      "enrichment-provenance.schema.json",
       "scored-signal.schema.json",
       "provenance-record.schema.json",
     ].forEach((f) =>
@@ -49,7 +51,26 @@ describe("vendored governed schema provenance (MANIFEST integrity)", () => {
     );
   });
 
-  it("pins the FACTORY-CONTRACT closure at the authorizing afi-config commit", () => {
-    expect(manifest.afiConfigCommit).toBe("f91ce4465b9c54bc221ba82e7a468544ffcf3fe3");
+  it("covers the governed KAT vectors + valid vector the test suite executes", () => {
+    const covered = Object.keys(manifest.sources);
+    [
+      "tests/evidence/vendored/minimal-scored.v3.json",
+      "tests/evidence/vendored/canonical-json-hashing.kat.json",
+      "tests/evidence/vendored/evidence-v3-hashes.kat.json",
+    ].forEach((f) => expect(covered).toContain(f));
+  });
+
+  it("carries NO V2 evidence surface (EV3-GOV D-EV3-8 forward-only deletion)", () => {
+    const covered = Object.keys(manifest.sources).join("\n");
+    expect(covered).not.toMatch(/scored-signal-evidence\.v2/);
+    expect(covered).not.toMatch(/enrichment-provenance/);
+    expect(manifest).not.toHaveProperty("governedSchemaIdV2");
+  });
+
+  it("pins the EV3-CONTRACT closure at the authorizing afi-config commit", () => {
+    expect(manifest.afiConfigCommit).toBe("9497afc24bf380b21701bee453c13ebdf8881a26");
+    expect(manifest.governedSchemaIdV3).toBe(
+      "https://afi-protocol.org/schemas/scored-signal-evidence/v3/scored-signal-evidence.schema.json"
+    );
   });
 });

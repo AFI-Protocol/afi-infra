@@ -1,0 +1,314 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://afi-protocol.org/schemas/provider-invocation-proof/v1/provider-invocation-proof.schema.json",
+  "title": "AFI ProviderInvocationProof v1 (EV3-CONTRACT — per-lane provider invocation proof)",
+  "description": "One closed, credential-safe record of one SUCCESSFUL provider invocation for one governed category lane (afi.provider-invocation-proof.v1). Every afi.scored-signal-evidence.v3 record carries EXACTLY FIVE of these — one per governed category (technical, pattern, sentiment, news, aiMl), unique by category, deterministically ordered ascending by case-sensitive lexicographic category name (aiMl, news, pattern, sentiment, technical) — bound positionally by the v3 record schema. Each proof binds, with non-secret facts only: the category-result identity (category + the governed result schema id + the category-result hash that entered the join + status succeeded); the Provider identity (id, recordVersion, record fingerprint, executionClass, deterministic posture); the ProviderInstance identity (id, recordVersion, record fingerprint, governed model where declared); the adapter identity (id, exact version, transport kind); the credential binding (explicit keyless posture XOR an opaque CredentialRef binding — never a secret); and the normalized invocation-input and provider-result hashes. The technical lane's non-secret price-source identifier is the ONLY per-lane source-reference field admitted in this version. Proof facts are CARRIED, NEVER CONSUMED (D-EV3-2).",
+  "$comment": "BOUNDARY (EV3-CONTRACT): schema/contract only — NO adapter code, NO endpoint, NO credential storage, NO provider re-call. Evidence describes the invocation that occurred; no evidence builder may invoke an adapter, re-fetch market data, re-run Tiny Brains, or accept invocation facts detached from the current run (D-EV3-5(2)). Cross-object agreements JSON Schema draft-07 cannot enforce (identity facts equal the boot-verified governed registry resolution; categoryResultHash equals the recomputed hash of the result the analyst path actually consumed) are governed constraints in x-afiConstraints, enforced fail-closed by the sole District Two Evidence V3 builder (D-EV3-5(3)).",
+  "x-afiStatus": "governed-contract",
+  "x-afiPartOf": "AFI Evidence V3 and Provider Invocation Provenance v0.1 (EV3-GOV)",
+  "x-afiDoctrineRefs": [
+    "afi-governance/decisions/evidence-v3-provider-provenance-v0.1 (EV3-GOV) D-EV3-2 — the per-lane provider invocation proof contract: exactly five, closed, unique, deterministically ordered, credential-safe, carried-not-consumed",
+    "afi-governance/decisions/evidence-v3-provider-provenance-v0.1 (EV3-GOV) D-EV3-3 — the aiMl proof additionally carries afi.aiml-invocation-proof.v1; required exactly when category is aiMl, structurally forbidden otherwise",
+    "afi-governance/decisions/evidence-v3-provider-provenance-v0.1 (EV3-GOV) D-EV3-4 — hash law: the registered domain tags afi.d2.provider-record, afi.d2.provider-instance-record, afi.d2.provider-invocation-input, afi.d2.provider-result and the re-homed afi.d2.lane-output; every hash on this proof is computed under the composition canonicalization law (canonical-json-hashing.v1) and carried as a CanonicalHash v1 object with the tag CARRIED, never hashed",
+    "afi-governance/decisions/evidence-v3-provider-provenance-v0.1 (EV3-GOV) D-EV3-5 — capture inside the one live graph pass at the provider runtime seam; a scored record admits only status 'succeeded' (a failed lane yields no scored evaluation at all); fail-closed mismatch law in the sole District Two builder",
+    "afi-governance/decisions/evidence-v3-provider-provenance-v0.1 (EV3-GOV) D-EV3-6 — credential-safety law: opaque CredentialRef identity facts or explicit keyless posture; never a secret, secret-derived hash, header, token, or credentialed URL",
+    "afi-governance/decisions/provider-byok-foundations-v0.1 (PBF-GOV) D-PBF-4/D-PBF-7 — the three non-secret objects (Provider, ProviderInstance, CredentialRef) are the recorded identities; the BYOK boundary extends into evidence",
+    "afi-governance/decisions/five-lane-provider-runtime-v0.1 (FLPR-GOV) D-FLPR-4 — the explicit-selection law whose resolved identities this proof records; lane vendor-neutrality at the enrichment seam is unchanged",
+    "afi-governance/decisions/factory-configurable-pipelines-v1 (FCP-GOV) D-FCP-1/D-FCP-3 — the five-category namespace (casing exact) and the contract-family change control this schema version lives under"
+  ],
+  "x-afiConstraints": {
+    "hashLaw": "Every CanonicalHash on this proof (provider.recordFingerprint, providerInstance.recordFingerprint, invocationInputHash, providerResultHash, categoryResultHash) is computed under the COMPOSITION canonicalization law canonical-json-hashing.v1 (schemas/hashing/canonical-json-hashing.v1.md): sha256 over UTF-8 of the canonically serialized JSON, with the domainTag CARRIED in the CanonicalHash object and NEVER part of the hash material (D-EV3-4(2)). Preimages: invocationInputHash commits to the normalized, non-secret invocation input projection (credential material, headers, and volatile fields structurally excluded by the projection's closed definition); providerResultHash commits to the validated category result MINUS its category property; categoryResultHash commits to the FULL category result consumed by the join (D-EV3-4(3)).",
+    "carriedNotConsumed": "Proof facts are provenance OUTPUT, not runtime input: no category node, join, analyst, scorer, UWR, or decay path may read a provider invocation proof; no lane, join, or scoring logic may branch on any identity recorded here (D-EV3-2). Lane vendor-neutrality at the enrichment seam (D-FLPR-1 scope-guard) is unchanged.",
+    "registryResolutionAgreement": "CROSS-OBJECT (builder-enforced, fail-closed): the provider, providerInstance, adapter, and credential identity facts MUST equal the boot-verified governed registry resolution of the invocation that occurred (the D-FLPR-4 explicit selection chain); the model field MUST be present exactly when the selected ProviderInstance declares one and MUST equal it; the credential binding MUST be consistent with the instance's governed record (keyless XOR credentialRef, kind/status agreement). Any mismatch yields NO scored V3 record (D-EV3-5(3)).",
+    "categoryResultAgreement": "CROSS-OBJECT (builder-enforced, fail-closed): categoryResultHash MUST equal the recomputed composition-law hash of the category result the analyst path ACTUALLY consumed at the join, and providerResultHash MUST equal the recomputed hash of that result minus its category property (D-EV3-5(3)). Evidence never re-calls a provider to check this — the results are captured in the one live graph pass (D-EV3-5(2)).",
+    "credentialSafety": "NO SECRET MATERIAL (D-EV3-6): the credential member carries EITHER the explicit keyless posture OR opaque CredentialRef identity facts (kind, opaque ref id, recordVersion, governed status) — never an API key, bearer token, authorization header, secret-manager payload or path, credential-bearing URL, or any hash/fingerprint derived from secret material. additionalProperties:false at every level is the primary structural defense; the synthetic-marker test obligation (D-EV3-4(8)) is the empirical one.",
+    "successOnly": "status is const 'succeeded': a scored V3 record admits no other invocation status — under D-EV3-5(1) a failed or degraded lane yields no scored evaluation, no scored signal, and no evidence record. Failed invocations remain bounded operational diagnostics; there is no failed-invocation evidence artifact.",
+    "sourceReferenceFields": "The technical lane's priceSource is the ONLY per-lane source-reference field admitted in afi.provider-invocation-proof.v1 (D-EV3-2(6)); it is structurally forbidden on every other lane (if/else binder). No other per-lane field beyond those enumerated by D-EV3-2 is admitted."
+  },
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "category",
+    "resultSchema",
+    "provider",
+    "providerInstance",
+    "adapter",
+    "credential",
+    "invocationInputHash",
+    "providerResultHash",
+    "categoryResultHash",
+    "status"
+  ],
+  "properties": {
+    "schema": {
+      "type": "string",
+      "const": "afi.provider-invocation-proof.v1",
+      "description": "Schema-id version of the per-lane provider invocation proof."
+    },
+    "category": {
+      "type": "string",
+      "enum": ["technical", "pattern", "sentiment", "news", "aiMl"],
+      "description": "The governed category lane this proof covers (D-FCP-1 namespace, casing exact — the runtime category marker is camelCase aiMl)."
+    },
+    "resultSchema": {
+      "type": "string",
+      "enum": [
+        "afi.enrichment.technical.v1",
+        "afi.enrichment.pattern.v1",
+        "afi.enrichment.sentiment.v1",
+        "afi.enrichment.news.v1",
+        "afi.enrichment.aiml.v1"
+      ],
+      "description": "The governed result schema id of the category result this proof commits to, enumerated exactly (contract ids are lowercase; only the runtime category marker is camelCase aiMl). Bound per-category by the allOf binders below (D-EV3-2(1))."
+    },
+    "provider": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["providerId", "recordVersion", "recordFingerprint", "executionClass", "deterministic"],
+      "description": "The Provider identity of the invocation that occurred (afi.provider.v1 identity facts; D-EV3-2(2)).",
+      "properties": {
+        "providerId": {
+          "type": "string",
+          "pattern": "^[a-z0-9][a-z0-9-]*$",
+          "minLength": 1,
+          "maxLength": 100,
+          "description": "The afi.provider.v1 providerId of the provider that ran (same identifier law as the governed provider record)."
+        },
+        "recordVersion": {
+          "type": "string",
+          "pattern": "^(0|[1-9]\\d*)\\.(0|[1-9]\\d*)\\.(0|[1-9]\\d*)$",
+          "description": "The recordVersion of the resolved afi.provider.v1 record (semver, no v prefix)."
+        },
+        "recordFingerprint": {
+          "description": "CanonicalHash v1 content commitment to the resolved provider record, domain afi.d2.provider-record (D-EV3-4(1); composition law, tag carried not hashed).",
+          "allOf": [
+            { "$ref": "https://afi-protocol.org/schemas/provenance/v1/canonical-hash.schema.json" },
+            { "type": "object", "properties": { "domainTag": { "const": "afi.d2.provider-record" } } }
+          ]
+        },
+        "executionClass": {
+          "type": "string",
+          "enum": ["local", "remote"],
+          "description": "The provider's execution class, mirrored EXACTLY from afi.provider.v1."
+        },
+        "deterministic": {
+          "type": "boolean",
+          "description": "The provider's deterministic-vs-probabilistic posture, mirrored from afi.provider.v1."
+        }
+      }
+    },
+    "providerInstance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["providerInstanceId", "recordVersion", "recordFingerprint"],
+      "description": "The ProviderInstance identity of the invocation that occurred (afi.provider-instance.v1 identity facts; D-EV3-2(3)).",
+      "properties": {
+        "providerInstanceId": {
+          "type": "string",
+          "pattern": "^[a-z0-9][a-z0-9-]*$",
+          "minLength": 1,
+          "maxLength": 100,
+          "description": "The afi.provider-instance.v1 providerInstanceId of the instance that ran (the D-FLPR-4 explicit selection)."
+        },
+        "recordVersion": {
+          "type": "string",
+          "pattern": "^(0|[1-9]\\d*)\\.(0|[1-9]\\d*)\\.(0|[1-9]\\d*)$",
+          "description": "The recordVersion of the resolved afi.provider-instance.v1 record (semver, no v prefix)."
+        },
+        "recordFingerprint": {
+          "description": "CanonicalHash v1 content commitment to the resolved provider-instance record (the non-secret configuration commitment), domain afi.d2.provider-instance-record (D-EV3-4(1)).",
+          "allOf": [
+            { "$ref": "https://afi-protocol.org/schemas/provenance/v1/canonical-hash.schema.json" },
+            { "type": "object", "properties": { "domainTag": { "const": "afi.d2.provider-instance-record" } } }
+          ]
+        },
+        "model": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100,
+          "description": "OPTIONAL governed model identifier — present exactly when the selected instance declares one (e.g. the aiMl instance's Tiny Brains orchestration profile selection, D-PBF-3). Cross-object agreement with the instance record is builder-enforced (x-afiConstraints.registryResolutionAgreement)."
+        }
+      }
+    },
+    "adapter": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["adapterId", "adapterVersion", "transportKind"],
+      "description": "The adapter identity of the invocation that occurred (the trusted, build-time-registered adapter; D-EV3-2(4)).",
+      "properties": {
+        "adapterId": {
+          "type": "string",
+          "pattern": "^[a-z0-9][a-z0-9-]*$",
+          "minLength": 1,
+          "maxLength": 100,
+          "description": "Identity of the registered adapter that ran. NEVER a filesystem path or code URL."
+        },
+        "adapterVersion": {
+          "type": "string",
+          "pattern": "^(0|[1-9]\\d*)\\.(0|[1-9]\\d*)\\.(0|[1-9]\\d*)$",
+          "description": "The exact adapter version pin (semver, no v prefix) resolved by the fail-closed adapter registry."
+        },
+        "transportKind": {
+          "type": "string",
+          "enum": ["in-process", "http"],
+          "description": "How the adapter reached its capability: 'in-process' (local compute, no I/O boundary) or 'http' (remote service/API). Never a URL."
+        }
+      }
+    },
+    "credential": {
+      "description": "The credential binding of the invocation that occurred — EXACTLY ONE of: explicit keyless posture, or an opaque CredentialRef binding (D-EV3-2(5), D-EV3-6). Never a secret value, header, token, or credentialed URL.",
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["mode"],
+          "properties": {
+            "mode": {
+              "type": "string",
+              "const": "keyless",
+              "description": "Explicit keyless posture: the provider requires no credential and none was resolved."
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["mode", "credentialKind", "credentialRef", "recordVersion", "status"],
+          "properties": {
+            "mode": {
+              "type": "string",
+              "const": "credentialRef",
+              "description": "Opaque CredentialRef binding: the invocation resolved a credential behind the governed afi.credential-ref.v1 pointer."
+            },
+            "credentialKind": {
+              "type": "string",
+              "enum": ["apiKeyHeader"],
+              "description": "The credential KIND, mirrored EXACTLY from afi.credential-ref.v1 — names the kind only, never a value."
+            },
+            "credentialRef": {
+              "type": "string",
+              "pattern": "^[a-z0-9][a-z0-9-]*$",
+              "minLength": 1,
+              "maxLength": 100,
+              "description": "The OPAQUE deployment-local afi.credential-ref.v1 reference id — never a secret value, never a backend path or URL."
+            },
+            "recordVersion": {
+              "type": "string",
+              "pattern": "^(0|[1-9]\\d*)\\.(0|[1-9]\\d*)\\.(0|[1-9]\\d*)$",
+              "description": "The recordVersion of the resolved afi.credential-ref.v1 record (semver, no v prefix). The secret rotates BEHIND the reference without changing this version."
+            },
+            "status": {
+              "type": "string",
+              "enum": ["active", "disabled"],
+              "description": "The governed status of the resolved CredentialRef record, mirrored EXACTLY from afi.credential-ref.v1."
+            }
+          }
+        }
+      ]
+    },
+    "invocationInputHash": {
+      "description": "CanonicalHash v1 commitment to the normalized, non-secret invocation input projection (the adapter's resolved input facts; credential material, headers, and volatile fields structurally excluded by the projection's closed definition), domain afi.d2.provider-invocation-input (D-EV3-4(3)).",
+      "allOf": [
+        { "$ref": "https://afi-protocol.org/schemas/provenance/v1/canonical-hash.schema.json" },
+        { "type": "object", "properties": { "domainTag": { "const": "afi.d2.provider-invocation-input" } } }
+      ]
+    },
+    "providerResultHash": {
+      "description": "CanonicalHash v1 commitment to the validated category result MINUS its category property (the provider's normalized payload), domain afi.d2.provider-result (D-EV3-4(3)).",
+      "allOf": [
+        { "$ref": "https://afi-protocol.org/schemas/provenance/v1/canonical-hash.schema.json" },
+        { "type": "object", "properties": { "domainTag": { "const": "afi.d2.provider-result" } } }
+      ]
+    },
+    "categoryResultHash": {
+      "description": "CanonicalHash v1 commitment to the FULL category result consumed by the join — the exact result that entered scoring — domain afi.d2.lane-output (the re-homed reservation, D-EV3-4(1)/(3)). Cross-checked by recomputation, fail-closed (x-afiConstraints.categoryResultAgreement).",
+      "allOf": [
+        { "$ref": "https://afi-protocol.org/schemas/provenance/v1/canonical-hash.schema.json" },
+        { "type": "object", "properties": { "domainTag": { "const": "afi.d2.lane-output" } } }
+      ]
+    },
+    "priceSource": {
+      "type": "string",
+      "minLength": 1,
+      "description": "OPTIONAL, technical lane ONLY (structurally forbidden elsewhere — if/else binder): the non-secret price-source identifier of the technical lane's market-data feed (e.g. 'blofin'). The only per-lane source-reference field admitted in this version (D-EV3-2(6)). Never a URL, never credentialed."
+    },
+    "status": {
+      "type": "string",
+      "const": "succeeded",
+      "description": "Result status. A scored V3 record admits no other status — under D-EV3-5 a failed lane yields no scored evaluation at all (x-afiConstraints.successOnly)."
+    },
+    "aimlInvocation": {
+      "$ref": "../../aiml-invocation-proof/v1/aiml-invocation-proof.schema.json",
+      "description": "The nested afi.aiml-invocation-proof.v1 (D-EV3-3): REQUIRED exactly when category is aiMl, structurally FORBIDDEN otherwise (if/else binder)."
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": { "category": { "const": "technical" } },
+        "required": ["category"]
+      },
+      "then": {
+        "properties": { "resultSchema": { "const": "afi.enrichment.technical.v1" } }
+      }
+    },
+    {
+      "if": {
+        "properties": { "category": { "const": "pattern" } },
+        "required": ["category"]
+      },
+      "then": {
+        "properties": { "resultSchema": { "const": "afi.enrichment.pattern.v1" } }
+      }
+    },
+    {
+      "if": {
+        "properties": { "category": { "const": "sentiment" } },
+        "required": ["category"]
+      },
+      "then": {
+        "properties": { "resultSchema": { "const": "afi.enrichment.sentiment.v1" } }
+      }
+    },
+    {
+      "if": {
+        "properties": { "category": { "const": "news" } },
+        "required": ["category"]
+      },
+      "then": {
+        "properties": { "resultSchema": { "const": "afi.enrichment.news.v1" } }
+      }
+    },
+    {
+      "if": {
+        "properties": { "category": { "const": "aiMl" } },
+        "required": ["category"]
+      },
+      "then": {
+        "properties": { "resultSchema": { "const": "afi.enrichment.aiml.v1" } }
+      }
+    },
+    {
+      "if": {
+        "properties": { "category": { "const": "technical" } },
+        "required": ["category"]
+      },
+      "else": {
+        "not": { "required": ["priceSource"] }
+      }
+    },
+    {
+      "if": {
+        "properties": { "category": { "const": "aiMl" } },
+        "required": ["category"]
+      },
+      "then": {
+        "required": ["aimlInvocation"]
+      },
+      "else": {
+        "not": { "required": ["aimlInvocation"] }
+      }
+    }
+  ]
+}

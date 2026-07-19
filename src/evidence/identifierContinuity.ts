@@ -1,8 +1,9 @@
 // Identifier-continuity + finality checks the store enforces at the mutation
 // boundary. JSON Schema draft-07 cannot express cross-object equality, so these
 // realize the governed x-afiConstraints.identifierContinuity clause of
-// `afi.scored-signal-evidence.v2` (OBJ-GOV D-OBJ-1/D-OBJ-3/D-OBJ-6, LIFE-GOV
-// D-LIFE-5) — the same constraint the afi-config drift-guard tests assert.
+// `afi.scored-signal-evidence.v3` (OBJ-GOV D-OBJ-1/D-OBJ-3/D-OBJ-6, LIFE-GOV
+// D-LIFE-5; unchanged logic across the v2->v3 step, EV3-GOV D-EV3-1) — the
+// same constraint the afi-config drift-guard tests assert.
 
 import {
   FINALIZED_STATES,
