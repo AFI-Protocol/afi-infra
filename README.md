@@ -62,7 +62,7 @@ Factory.ai droids can contribute:
 
 ## Related Repositories
 
-- **afi-reactor** - DAG orchestrator (infrastructure consumer)
+- **afi-reactor** - manifest-driven pipeline runtime (infrastructure consumer)
 - **afi-core** - Core runtime (infrastructure consumer)
 
 ## License
