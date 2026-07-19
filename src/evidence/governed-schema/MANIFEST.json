@@ -1,7 +1,7 @@
 {
   "$comment": "Provenance of the vendored governed schema closure (Evidence V3, EV3-GOV D-EV3-1/D-EV3-8: the closure gains the v3 + invocation-proof members and drops every V2 member). Each vendored file is a byte-identical copy of afi-config@afiConfigCommit at afiConfigPath. Enforced by tests/evidence/governedSchemaProvenance.test.ts (always) and scripts/verify-governed-schema-provenance.mjs (CI, against a pinned checkout). Do not hand-edit; regenerate only from an owner-approved afi-config commit.",
   "afiConfigRepo": "https://github.com/AFI-Protocol/afi-config",
-  "afiConfigCommit": "22e79cff1c4b312db792ef71b10d1610fcdbc65c",
+  "afiConfigCommit": "d6f2504805059ffa09d8c1bfcecb67cd47abcea2",
   "governedSchemaIdV3": "https://afi-protocol.org/schemas/scored-signal-evidence/v3/scored-signal-evidence.schema.json",
   "sources": {
     "src/evidence/governed-schema/scored-signal-evidence.v3.schema.json": {
@@ -22,23 +22,23 @@
     },
     "src/evidence/governed-schema/canonical-hash.schema.json": {
       "afiConfigPath": "schemas/provenance/v1/canonical-hash.schema.json",
-      "sha256": "8fe0bed27996fe4519654fe83c687b805b8ef898e0c4b83a49f743b266adf836"
+      "sha256": "9ecf2467f76673dae1750bad3126aaa2e26597f5789cb16d6164193c8222b1e8"
     },
     "src/evidence/governed-schema/evidence-ref.schema.json": {
       "afiConfigPath": "schemas/provenance/v1/evidence-ref.schema.json",
-      "sha256": "2ec464e72ab38380480f69230f3986466b20c40f65b87b997e2e43e3b854dc86"
+      "sha256": "533bc376a62348ad3cf716a721b5c75a90d0d75f49d0c1f18419d27afe72129d"
     },
     "src/evidence/governed-schema/source-disclosure-profile.schema.json": {
       "afiConfigPath": "schemas/provenance/v1/source-disclosure-profile.schema.json",
-      "sha256": "7c31bdec3e5578a5da1c2107f7cb29c8fcba817dda17e511103ce94dfdd5d6f7"
+      "sha256": "183836fcae8cfc5c225a912c070612a1670393b3030976f127ddfc60866e7577"
     },
     "src/evidence/governed-schema/scored-signal.schema.json": {
       "afiConfigPath": "schemas/provenance/v1/scored-signal.schema.json",
-      "sha256": "cfe5a74ce39ec6bcb3745b080c42ac865615605bad696f0727957842c9575b23"
+      "sha256": "d5884785606b3343c6e346cc904a4354b48439f24e2f4b09339a9cf2e547ee11"
     },
     "src/evidence/governed-schema/provenance-record.schema.json": {
       "afiConfigPath": "schemas/provenance/v1/provenance-record.schema.json",
-      "sha256": "b5e420c8c35c0c0e0128719a5187ae5493a824e18676e2896e90c8b5b5c2f536"
+      "sha256": "9e13678a061794c6e5984370b5a1adc08f941e793176e70269b1a8f3202f75ff"
     },
     "tests/evidence/vendored/minimal-scored.v3.json": {
       "afiConfigPath": "examples/scored-signal-evidence/v3/vectors/valid/minimal-scored.json",

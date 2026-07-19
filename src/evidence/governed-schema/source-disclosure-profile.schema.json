@@ -7,7 +7,7 @@
   "x-afiStatus": "draft-non-implementation",
   "x-afiPartOf": "AFI District 2 — Canonical Data & Provenance Boundary (D2 M1)",
   "x-afiDoctrineRefs": [
-    "District 2 D-17 decision — authorizes D2 M1 only (afi-config schema drafts and tests)",
+    "District Two M1 provenance-schema authorization — R1-GOV D-R1-5 (afi-config schema drafts and tests only; no runtime wiring)",
     "BenchKit owns weighting/evaluation policy; District 2 defines descriptive, computable metadata only"
   ],
   "x-afiOpenItems": {
