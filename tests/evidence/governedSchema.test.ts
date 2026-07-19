@@ -207,7 +207,7 @@ describe("governed-schema validation v3 (vendored EV3-CONTRACT)", () => {
       credentialRef: "cred-news-1",
       recordVersion: "1.0.0",
       status: "active",
-      apiKey: "sk-SYNTHETIC",
+      apiKey: "SYNTHETIC-NOT-A-REAL-KEY",
     };
     expect(validateEvidenceSchemaV3(secretish).valid, "secret-bearing credential").toBe(false);
   });
