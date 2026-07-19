@@ -1,9 +1,9 @@
 /**
- * 🧪 Deterministic DAG Mock Test
- * 
+ * 🧪 Deterministic Pipeline Mock Test
+ *
  * Verifies a stable, repeatable flow end-to-end at the infra boundary.
- * 
- * This test simulates a minimal 3-node DAG:
+ *
+ * This test simulates a minimal 3-stage pipeline:
  * 1. Ingest → 2. Enrich → 3. Score
  * 
  * MUST prove:
@@ -12,7 +12,7 @@
  * - Pure functions only, no network/DB calls
  * 
  * NOTE: This is a LOCAL mock. Does NOT import from afi-core or afi-reactor.
- * Real DAG orchestration lives in afi-reactor (see AFI_ORCHESTRATOR_DOCTRINE.md).
+ * Real pipeline orchestration lives in afi-reactor (the manifest-driven GraphExecutor runtime).
  */
 
 import { describe, it, expect } from 'vitest';
