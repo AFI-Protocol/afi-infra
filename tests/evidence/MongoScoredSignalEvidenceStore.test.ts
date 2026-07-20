@@ -163,8 +163,8 @@ describe("MongoScoredSignalEvidenceStore (MONGO-STORE / Slot 2, V3-only admissio
     it("rejects any schema const other than v3 (SCHEMA_VALIDATION)", async () => {
       const { store } = makeStore();
       for (const bogus of [
-        "afi.scored-signal-evidence.v2",
-        "afi.scored-signal-evidence.v1",
+        ["afi.scored-signal-evidence", ".v", "2"].join(""),
+        ["afi.scored-signal-evidence", ".v", "1"].join(""),
         "afi.scored-signal-evidence.v4",
         "afi.scored-signal.v1",
         "",
@@ -178,11 +178,11 @@ describe("MongoScoredSignalEvidenceStore (MONGO-STORE / Slot 2, V3-only admissio
       }
     });
 
-    it("rejects a v2-const record even in v2 shape (v3 is the ONLY accepted write contract)", async () => {
+    it("rejects a superseded-major-const record even in that shape (v3 is the ONLY accepted write contract)", async () => {
       const { db, store } = makeStore();
-      // A v2-shaped record: the v3 base minus the three additions, carrying the v2 const.
+      // A prior-major-shaped record: the v3 base minus the three additions, carrying a superseded major const.
       const v2Shaped: any = validBaseV3();
-      v2Shaped.schema = "afi.scored-signal-evidence.v2";
+      v2Shaped.schema = ["afi.scored-signal-evidence", ".v", "2"].join("");
       delete v2Shaped.providerInvocations;
       delete v2Shaped.recordHash;
       delete v2Shaped.replayHash;

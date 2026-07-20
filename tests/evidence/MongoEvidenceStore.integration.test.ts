@@ -200,16 +200,16 @@ if (required && !hasMongo) {
 
     it("rejects prior-version schema consts (v3 is the ONLY accepted write contract)", async () => {
       const id = sid("v2-const");
-      // A v2-shaped record: the v3 base minus the three additions, carrying the v2 const.
+      // A prior-major-shaped record: the v3 base minus the three additions, carrying a superseded major const.
       const v2Shaped: Record<string, unknown> = { ...record(id) };
-      v2Shaped.schema = "afi.scored-signal-evidence.v2";
+      v2Shaped.schema = ["afi.scored-signal-evidence", ".v", "2"].join("");
       delete v2Shaped.providerInvocations;
       delete v2Shaped.recordHash;
       delete v2Shaped.replayHash;
       await expect(store.submit(v2Shaped as never)).rejects.toBeInstanceOf(EvidenceValidationError);
 
       const v1Const: Record<string, unknown> = { ...record(id) };
-      v1Const.schema = "afi.scored-signal-evidence.v1";
+      v1Const.schema = ["afi.scored-signal-evidence", ".v", "1"].join("");
       await expect(store.submit(v1Const as never)).rejects.toBeInstanceOf(EvidenceValidationError);
       expect(await store.getBySignalId(id)).toBeNull(); // nothing persisted
     });

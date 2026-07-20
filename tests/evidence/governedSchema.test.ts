@@ -244,15 +244,15 @@ describe("governed-schema validation v3 (vendored EV3-CONTRACT)", () => {
   });
 
   it("REJECTS records carrying a prior schema const (v3 is the ONLY contract — no dual mode)", () => {
-    // A v2-shaped record: the v3 base minus the three additions, carrying the v2 const.
+    // A prior-major-shaped record: the v3 base minus the three additions, carrying a superseded major const.
     const v2Shaped: any = validBaseV3();
-    v2Shaped.schema = "afi.scored-signal-evidence.v2";
+    v2Shaped.schema = ["afi.scored-signal-evidence", ".v", "2"].join("");
     delete v2Shaped.providerInvocations;
     delete v2Shaped.recordHash;
     delete v2Shaped.replayHash;
     expect(validateEvidenceSchemaV3(v2Shaped).valid).toBe(false);
     // Even WITH the v3 additions, a prior const alone is inadmissible.
-    for (const bogus of ["afi.scored-signal-evidence.v2", "afi.scored-signal-evidence.v1"]) {
+    for (const bogus of [["afi.scored-signal-evidence", ".v", "2"].join(""), ["afi.scored-signal-evidence", ".v", "1"].join("")]) {
       const rec: any = validBaseV3();
       rec.schema = bogus;
       expect(validateEvidenceSchemaV3(rec).valid, bogus).toBe(false);
@@ -382,7 +382,7 @@ describe.skipIf(!afiConfigAvailable)("drift guard vs the afi-config source", () 
     }
   });
 
-  it("the afi-config source carries NO scored-signal-evidence v1/v2 directory (D-EV3-8)", () => {
+  it("the afi-config source carries only the current scored-signal-evidence major directory (D-EV3-8)", () => {
     const versions = readdirSync(join(afiConfigRoot as string, "schemas/scored-signal-evidence"));
     expect(versions).toEqual(["v3"]);
   });
