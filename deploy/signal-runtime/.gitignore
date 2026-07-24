@@ -1,0 +1,2 @@
+# Local, per-deployment filled config — never commit (secrets policy).
+roundtrip.env
