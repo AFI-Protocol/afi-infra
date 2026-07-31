@@ -45,8 +45,53 @@ esac
 
 PROJECT="$AFI_GCP_PROJECT"; REGION="$AFI_GCP_REGION"; REPO="$AFI_AR_REPO"
 REG_HOST="${REGION}-docker.pkg.dev"
-TB_IMG="${REG_HOST}/${PROJECT}/${REPO}/afi-tiny-brains:latest"
-RX_IMG="${REG_HOST}/${PROJECT}/${REPO}/afi-reactor:latest"
+# --- image tags: content-addressed, never mutable ------------------------------
+#
+# BOTH images were previously tagged `:latest`. Combined with the "skip the build
+# if the tag already exists" guards in steps 6 and 7, that silently pinned the
+# deployment to whichever image was built FIRST: the running reactor image was
+# 8 days stale and predated the MarkitTick route entirely, while every deploy
+# reported success. A mutable tag plus a skip-if-exists guard is a trap.
+#
+# Deriving the tag from the HEAD commits of the repos that actually go into each
+# image makes those guards CORRECT instead of dangerous: identical sources
+# produce an identical tag (a genuine cache hit), and ANY source change produces
+# a new tag that cannot collide with a previously built image.
+#
+# A dirty worktree gets a short digest of its diff appended AND forces a rebuild
+# (see *_DIRTY below), so an uncommitted build can never be mistaken for, or
+# silently reuse, a committed one. Note the digest covers tracked changes and the
+# set of untracked paths; edits to the CONTENT of an untracked file are not
+# captured — committed builds are the supported path.
+src_tag() {
+  local out="" r sha dirt
+  for r in "$@"; do
+    sha="$(git -C "$WORKSPACE/$r" rev-parse --short=7 HEAD 2>/dev/null || echo nogit)"
+    dirt="$(git -C "$WORKSPACE/$r" status --porcelain 2>/dev/null || true)"
+    if [ -n "$dirt" ]; then
+      sha="${sha}d$( { printf '%s' "$dirt"; git -C "$WORKSPACE/$r" diff HEAD 2>/dev/null || true; } \
+        | sha256sum | cut -c1-6)"
+    fi
+    out="${out}${out:+-}${sha}"
+  done
+  printf '%s' "$out"
+}
+repos_dirty() {
+  local r dirt
+  for r in "$@"; do
+    dirt="$(git -C "$WORKSPACE/$r" status --porcelain 2>/dev/null || true)"
+    if [ -n "$dirt" ]; then return 0; fi
+  done
+  return 1
+}
+
+TB_IMG="${REG_HOST}/${PROJECT}/${REPO}/afi-tiny-brains:$(src_tag afi-tiny-brains)"
+RX_IMG="${REG_HOST}/${PROJECT}/${REPO}/afi-reactor:$(src_tag afi-config afi-core afi-reactor)"
+TB_DIRTY=0; if repos_dirty afi-tiny-brains; then TB_DIRTY=1; fi
+RX_DIRTY=0; if repos_dirty afi-config afi-core afi-reactor; then RX_DIRTY=1; fi
+echo "==> Image tags (content-addressed):"
+echo "    tiny-brains: ${TB_IMG##*:}$([ "$TB_DIRTY" = 1 ] && echo '  [DIRTY — forcing rebuild]' || true)"
+echo "    reactor:     ${RX_IMG##*:}$([ "$RX_DIRTY" = 1 ] && echo '  [DIRTY — forcing rebuild]' || true)"
 SA_EMAIL="${AFI_REACTOR_SA_NAME}@${PROJECT}.iam.gserviceaccount.com"
 
 echo "==> Target project: $PROJECT (region $REGION)"
@@ -109,8 +154,8 @@ for s in afi-evidence-mongodb-uri afi-webhook-secret; do
 done
 
 echo "==> [6/10] Build + deploy Tiny Brains (internal ingress, no IAM — reactor sends no token)"
-if gcloud artifacts docker images describe "$TB_IMG" --project "$PROJECT" >/dev/null 2>&1; then
-  echo "    Tiny Brains image already present — skipping build (delete the tag to force rebuild)"
+if [ "$TB_DIRTY" = 0 ] && gcloud artifacts docker images describe "$TB_IMG" --project "$PROJECT" >/dev/null 2>&1; then
+  echo "    Tiny Brains image for this exact source commit already present — reusing it"
 else
   gcloud builds submit "$WORKSPACE/afi-tiny-brains" --tag "$TB_IMG" --project "$PROJECT"
 fi
@@ -121,8 +166,8 @@ TB_URL="$(gcloud run services describe afi-tiny-brains --region "$REGION" --proj
 echo "    Tiny Brains internal URL: $TB_URL"
 
 echo "==> [7/10] Build Reactor image (minimal staged context: config+core+reactor source only)"
-if gcloud artifacts docker images describe "$RX_IMG" --project "$PROJECT" >/dev/null 2>&1; then
-  echo "    Reactor image already present — skipping build (delete the tag to force rebuild)"
+if [ "$RX_DIRTY" = 0 ] && gcloud artifacts docker images describe "$RX_IMG" --project "$PROJECT" >/dev/null 2>&1; then
+  echo "    Reactor image for this exact source commit already present — reusing it"
 else
   # gcloud builds submit --tag has no -f; build from a staged context whose root
   # Dockerfile is the reactor one, containing only the 3 repos' SOURCE (no
@@ -143,7 +188,7 @@ echo "==> [8/10] Deploy Reactor (IAM-only, stable egress, wired to Tiny Brains +
 gcloud run deploy afi-reactor --image "$RX_IMG" --region "$REGION" --project "$PROJECT" \
   --no-allow-unauthenticated --service-account "$SA_EMAIL" \
   --vpc-connector "$AFI_VPC_CONNECTOR" --vpc-egress=all-traffic \
-  --memory=1Gi --cpu=1 --timeout=120 --min-instances=1 \
+  --memory=1Gi --cpu=1 --timeout=120 --min-instances=1 --concurrency=8 \
   --set-env-vars "AFI_PRICE_FEED_SOURCE=${AFI_PRICE_FEED_SOURCE},TINY_BRAINS_URL=${TB_URL},TINY_BRAINS_ID_TOKEN_AUDIENCE=${TB_URL},NODE_ENV=production" \
   --set-secrets "AFI_EVIDENCE_MONGODB_URI=afi-evidence-mongodb-uri:latest,WEBHOOK_SHARED_SECRET=afi-webhook-secret:latest"
 
@@ -156,7 +201,24 @@ gcloud run services add-iam-policy-binding afi-reactor --region "$REGION" --proj
   --member "user:${ACTIVE_ACCT}" --role roles/run.invoker >/dev/null
 
 RX_URL="$(gcloud run services describe afi-reactor --region "$REGION" --project "$PROJECT" --format='value(status.url)')"
+
+# Never trust "deploy succeeded" — assert the SERVING revision actually
+# references the image we just built. This is the check that would have caught
+# the 8-day-stale reactor: the deploy reported success every time while the
+# serving revision quietly pointed at an older image.
+RX_SERVING_IMG="$(gcloud run services describe afi-reactor --region "$REGION" --project "$PROJECT" \
+  --format='value(spec.template.spec.containers[0].image)')"
+if [ "$RX_SERVING_IMG" != "$RX_IMG" ]; then
+  echo "FATAL: reactor is serving '$RX_SERVING_IMG' but this run built '$RX_IMG'."
+  echo "       The deploy did not take effect — do NOT treat this as shipped."
+  exit 1
+fi
+RX_REVISION="$(gcloud run services describe afi-reactor --region "$REGION" --project "$PROJECT" \
+  --format='value(status.latestReadyRevisionName)')"
+
 echo "==> [10/10] Deployed."
+echo "    Reactor revision: $RX_REVISION"
+echo "    Reactor image:    $RX_IMG  (verified serving)"
 echo "    Reactor URL:     $RX_URL"
 echo "    Tiny Brains URL: $TB_URL (internal)"
 echo "    Atlas egress IP: $EGRESS_IP  (must be allowlisted in Atlas Network Access)"
