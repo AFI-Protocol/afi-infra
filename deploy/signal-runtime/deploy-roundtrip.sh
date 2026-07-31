@@ -145,10 +145,32 @@ if ! gcloud secrets describe afi-webhook-secret --project "$PROJECT" >/dev/null 
   echo "    generated afi-webhook-secret"
 fi
 
+# The secret the REACTOR binds. Defaults to the Private Service Connect URI —
+# the reactor reaches Atlas over PSC (10.128.0.2), not the public path.
+#
+# This CANNOT be auto-created: its value is the public URI with the host swapped
+# for the private-endpoint SRV, which only exists once the PSC endpoint is
+# AVAILABLE. Fail loudly rather than falling back to the public secret — a silent
+# fallback would revert the PSC cutover on the next deploy and nothing would
+# report it, because the public path still works.
+AFI_EVIDENCE_SECRET="${AFI_EVIDENCE_SECRET:-afi-evidence-mongodb-uri-psc}"
+if ! gcloud secrets describe "$AFI_EVIDENCE_SECRET" --project "$PROJECT" >/dev/null 2>&1; then
+  echo "FATAL: reactor evidence secret '$AFI_EVIDENCE_SECRET' does not exist."
+  echo "  Build it by transplanting the host off the public secret (password never read):"
+  echo "    NEWURI=\"\$(gcloud secrets versions access latest --secret=afi-evidence-mongodb-uri --project=$PROJECT \\"
+  echo "      | python3 -c 'import sys,urllib.parse as u; p=u.urlparse(sys.stdin.read().strip()); \\"
+  echo "          print(u.urlunparse(p._replace(netloc=p.netloc.split(\"@\")[0]+\"@\"+\"<PSC-SRV-HOST>\")))')\""
+  echo "    printf '%s' \"\$NEWURI\" | gcloud secrets create $AFI_EVIDENCE_SECRET --data-file=- --replication-policy=automatic --project=$PROJECT"
+  echo "  Or set AFI_EVIDENCE_SECRET=afi-evidence-mongodb-uri to deploy on the PUBLIC path"
+  echo "  (requires the Cloud Run egress IP to be in the Atlas access list)."
+  exit 1
+fi
+echo "    reactor will bind evidence secret: $AFI_EVIDENCE_SECRET"
+
 echo "==> [5/10] Reactor runtime SA + secret access (idempotent)"
 gcloud iam service-accounts describe "$SA_EMAIL" --project "$PROJECT" >/dev/null 2>&1 \
   || gcloud iam service-accounts create "$AFI_REACTOR_SA_NAME" --display-name "AFI Reactor runtime" --project "$PROJECT"
-for s in afi-evidence-mongodb-uri afi-webhook-secret; do
+for s in afi-evidence-mongodb-uri "$AFI_EVIDENCE_SECRET" afi-webhook-secret; do
   gcloud secrets add-iam-policy-binding "$s" --project "$PROJECT" \
     --member "serviceAccount:${SA_EMAIL}" --role roles/secretmanager.secretAccessor >/dev/null
 done
@@ -185,12 +207,27 @@ fi
 echo "==> [8/10] Deploy Reactor (IAM-only, stable egress, wired to Tiny Brains + secrets)"
 # TINY_BRAINS_ID_TOKEN_AUDIENCE enables the reactor's Cloud Run service-to-service
 # auth to the IAM-protected Tiny Brains (audience = its service URL).
+#
+# --vpc-egress MUST stay all-traffic (owner ruling 2026-07-31). Tiny Brains has
+# `ingress: internal`, so it only accepts traffic that leaves via the connector;
+# private-ranges-only makes that call arrive as external and Cloud Run answers
+# ingress-blocked requests with 404, which presents as a bogus "aiMl 404".
+# Atlas reaches PSC over the connector under EITHER mode — the switch buys
+# nothing here. Do not "optimize" this back.
+#
+# MarkitTick origin controls:
+#   AFI_MARKITTICK_ORIGIN_MODE  captured-preflight (default) | tradingview-webhook
+#     Set to tradingview-webhook ONLY once real alerts fire; setting it earlier
+#     stamps synthetic preflight runs as genuine TradingView origin, which is
+#     provenance contamination, not a labelling nit.
+#   AFI_MARKITTICK_ALLOWED_IPS  empty (default, filter OFF) | tradingview | csv
+#     MUST be set BEFORE `allUsers` invoker is granted, never after.
 gcloud run deploy afi-reactor --image "$RX_IMG" --region "$REGION" --project "$PROJECT" \
   --no-allow-unauthenticated --service-account "$SA_EMAIL" \
   --vpc-connector "$AFI_VPC_CONNECTOR" --vpc-egress=all-traffic \
   --memory=1Gi --cpu=1 --timeout=120 --min-instances=1 --concurrency=8 \
-  --set-env-vars "AFI_PRICE_FEED_SOURCE=${AFI_PRICE_FEED_SOURCE},TINY_BRAINS_URL=${TB_URL},TINY_BRAINS_ID_TOKEN_AUDIENCE=${TB_URL},NODE_ENV=production" \
-  --set-secrets "AFI_EVIDENCE_MONGODB_URI=afi-evidence-mongodb-uri:latest,WEBHOOK_SHARED_SECRET=afi-webhook-secret:latest"
+  --set-env-vars "AFI_PRICE_FEED_SOURCE=${AFI_PRICE_FEED_SOURCE},TINY_BRAINS_URL=${TB_URL},TINY_BRAINS_ID_TOKEN_AUDIENCE=${TB_URL},NODE_ENV=production,AFI_MARKITTICK_ORIGIN_MODE=${AFI_MARKITTICK_ORIGIN_MODE:-captured-preflight},AFI_MARKITTICK_ALLOWED_IPS=${AFI_MARKITTICK_ALLOWED_IPS:-}" \
+  --set-secrets "AFI_EVIDENCE_MONGODB_URI=${AFI_EVIDENCE_SECRET}:latest,WEBHOOK_SHARED_SECRET=afi-webhook-secret:latest"
 
 echo "==> [9/10] Grant invokers: reactor SA -> Tiny Brains, deploying account -> reactor"
 # Reactor's runtime SA must be able to invoke the IAM-protected Tiny Brains.
