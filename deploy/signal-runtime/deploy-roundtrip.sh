@@ -222,8 +222,47 @@ echo "==> [8/10] Deploy Reactor (IAM-only, stable egress, wired to Tiny Brains +
 #     provenance contamination, not a labelling nit.
 #   AFI_MARKITTICK_ALLOWED_IPS  empty (default, filter OFF) | tradingview | csv
 #     MUST be set BEFORE `allUsers` invoker is granted, never after.
+# Public ingress. TradingView cannot send a Google identity token, so real alerts
+# only land if the reactor accepts unauthenticated requests (`allUsers` ->
+# roles/run.invoker). That binding also requires a project-level override of
+# `constraints/iam.allowedPolicyMemberDomains`, which only an Organization Policy
+# Administrator can create.
+#
+# ⚠️ This flag REWRITES the service's IAM policy on every deploy. Hardcoding
+# --no-allow-unauthenticated silently REVOKED public ingress on a routine
+# redeploy, and the failure is nasty to diagnose: Cloud Run's edge returns a
+# Google HTML 403 before the request reaches the app, so it looks nothing like an
+# application error and reads as "TradingView broke".
+#
+# The guard below refuses to deploy when the service is CURRENTLY public and the
+# intent is unstated, rather than quietly picking one. Explicit AFI_REACTOR_PUBLIC
+# =true keeps it public; =false revokes on purpose; unset+currently-public aborts.
+CURRENT_PUBLIC=no
+if gcloud run services get-iam-policy afi-reactor --region "$REGION" --project "$PROJECT" \
+     --format='value(bindings.members)' 2>/dev/null | grep -q 'allUsers'; then
+  CURRENT_PUBLIC=yes
+fi
+if [ "$CURRENT_PUBLIC" = yes ] && [ -z "${AFI_REACTOR_PUBLIC:-}" ]; then
+  echo "FATAL: afi-reactor currently allows unauthenticated access (allUsers), but"
+  echo "  AFI_REACTOR_PUBLIC is unset. Deploying would REVOKE public ingress and"
+  echo "  silently break TradingView webhooks (Cloud Run answers with an edge 403"
+  echo "  that does not look like an application error)."
+  echo "  Set in roundtrip.env — explicitly, either way:"
+  echo "    export AFI_REACTOR_PUBLIC=true    # keep public ingress (TradingView)"
+  echo "    export AFI_REACTOR_PUBLIC=false   # revoke it, on purpose"
+  exit 1
+fi
+if [ "${AFI_REACTOR_PUBLIC:-false}" = "true" ]; then
+  RX_INGRESS_AUTH="--allow-unauthenticated"
+  echo "    ingress: PUBLIC (allUsers) — guarded by WEBHOOK_SHARED_SECRET on all"
+  echo "             POST routes + source-IP allowlist on the MarkitTick route"
+else
+  RX_INGRESS_AUTH="--no-allow-unauthenticated"
+  echo "    ingress: IAM-only"
+fi
+
 gcloud run deploy afi-reactor --image "$RX_IMG" --region "$REGION" --project "$PROJECT" \
-  --no-allow-unauthenticated --service-account "$SA_EMAIL" \
+  "$RX_INGRESS_AUTH" --service-account "$SA_EMAIL" \
   --vpc-connector "$AFI_VPC_CONNECTOR" --vpc-egress=all-traffic \
   --memory=1Gi --cpu=1 --timeout=120 --min-instances=1 --concurrency=8 \
   --set-env-vars "AFI_PRICE_FEED_SOURCE=${AFI_PRICE_FEED_SOURCE},TINY_BRAINS_URL=${TB_URL},TINY_BRAINS_ID_TOKEN_AUDIENCE=${TB_URL},NODE_ENV=production,AFI_MARKITTICK_ORIGIN_MODE=${AFI_MARKITTICK_ORIGIN_MODE:-captured-preflight},AFI_MARKITTICK_ALLOWED_IPS=${AFI_MARKITTICK_ALLOWED_IPS:-}" \
