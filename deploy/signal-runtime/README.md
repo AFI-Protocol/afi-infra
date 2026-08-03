@@ -68,7 +68,9 @@ Never add a test-signal path that skips the self-clean stage.
    ```
    ./verify-roundtrip.sh        # auto-discovers reactor URL + secrets
    ```
-   PASS = HTTP 200 with `pipelineResult.analystScore.uwrScore`, and a persisted Atlas
+   PASS = HTTP 200 with `pipelineResult.analystScore.uwrScore`, the per-signal ratio
+   decay stamp for the probe's `timeframeHint: "4h"` (TDR-GOV: `decay-ratio-v1`,
+   `halfLifeMinutes: 2880` = 12 × 240, `timeframeAssumed: false`), and a persisted Atlas
    record with `lifecycleState: SCORED` + non-empty `recordHash`/`replayHash`.
 
 ## Notes

@@ -116,13 +116,25 @@ HTTP_CODE="$(curl -sS -o "$RESP_FILE" -w '%{http_code}' -X POST "$AFI_REACTOR_UR
 echo "    HTTP $HTTP_CODE"
 [ "$HTTP_CODE" = "200" ] || { echo "FATAL: expected 200"; cat "$RESP_FILE"; exit 1; }
 
-echo "==> [3/6] Assert UWR score + capture signalId from the HTTP response"
+echo "==> [3/6] Assert UWR score + per-signal ratio decay stamp + capture signalId"
 # console.log emits a trailing newline so `read` returns 0 under `set -e`.
+# Decay-stamp assertion (TDR-GOV D-TDR-5(5)): the probe's timeframeHint "4h"
+# must resolve per signal under the registered ratio law (barsPerHalfLife 12
+# -> halfLifeMinutes 2880, identity decay-ratio-v1, timeframeAssumed false) —
+# the live proof that resolution is per-signal, not boot-frozen.
 read -r SIGNAL_ID UWR OUTCOME < <(RESP_FILE="$RESP_FILE" node -e '
   const r = JSON.parse(require("fs").readFileSync(process.env.RESP_FILE,"utf8"));
   const uwr = r?.pipelineResult?.analystScore?.uwrScore;
   const sid = r?.signalId || r?.pipelineResult?.signalId;
   if (typeof uwr !== "number") { console.error("no uwrScore:", JSON.stringify(r).slice(0,600)); process.exit(1); }
+  const d = r?.pipelineResult?.decayParams;
+  const expected = { halfLifeMinutes: 2880, greeksTemplateId: "decay-ratio-v1", barsPerHalfLife: 12, timeframeMinutes: 240, timeframeAssumed: false };
+  for (const [k, v] of Object.entries(expected)) {
+    if (!d || d[k] !== v) {
+      console.error(`FATAL: decay stamp mismatch on ${k}: expected ${JSON.stringify(v)}, got ${JSON.stringify(d && d[k])} (stamp: ${JSON.stringify(d)})`);
+      process.exit(1);
+    }
+  }
   console.log(`${sid} ${uwr} ${r?.persistence?.outcome ?? "unknown"}`);
 ') || true
 [ -n "$UWR" ] || { echo "FATAL: could not extract uwrScore"; exit 1; }
