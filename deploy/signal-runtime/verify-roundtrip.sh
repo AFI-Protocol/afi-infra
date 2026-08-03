@@ -49,7 +49,40 @@ MONGO_URI="$(gcloud secrets versions access latest --secret=afi-evidence-mongodb
 
 ENTRY="${ENTRY:-63000}"; STOP_LOSS="${STOP_LOSS:-61500}"; TAKE_PROFIT="${TAKE_PROFIT:-66000}"
 PAYLOAD_FILE="$(mktemp)"; RESP_FILE="$(mktemp)"
-trap 'rm -f "$PAYLOAD_FILE" "$RESP_FILE"' EXIT
+
+# Best-effort probe cleanup on ANY exit once the probe exists (D-DH-4(1)):
+# SIGNAL_ID is set after step [3/6]; until then this trap only removes tmp
+# files. A failure between ingest and the trap installation can still orphan
+# the probe — the next run's residue warning surfaces it.
+SIGNAL_ID=""
+cleanup() {
+  rm -f "$PAYLOAD_FILE" "$RESP_FILE"
+  if [ -n "$SIGNAL_ID" ]; then
+    NODE_PATH="$REACTOR_NM" MONGO_URI="$MONGO_URI" SIGNAL_ID="$SIGNAL_ID" node -e '
+      const { MongoClient } = require("mongodb");
+      (async () => {
+        const sid = process.env.SIGNAL_ID;
+        if (!sid || !sid.startsWith("cpj-")) return;
+        const c = new MongoClient(process.env.MONGO_URI, { serverSelectionTimeoutMS: 8000 }); await c.connect();
+        for (const [d, col] of [["afi_scored_signal_evidence","scored_signal_evidence"],["afi_scored_signal_evidence","scored_signal_evidence_history"],["afi_signal_analytics","scoring_context"],["afi_signal_analytics","signal_outcomes"]]) {
+          await c.db(d).collection(col).deleteMany({ signalId: sid }).catch(() => {});
+        }
+        await c.close();
+      })().catch(() => {});
+    ' 2>/dev/null || true
+  fi
+}
+trap cleanup EXIT
+
+echo "==> [0/6] Atlas preflight (never mint a probe the clean cannot reach)"
+NODE_PATH="$REACTOR_NM" MONGO_URI="$MONGO_URI" node -e '
+  const { MongoClient } = require("mongodb");
+  (async () => {
+    const c = new MongoClient(process.env.MONGO_URI, { serverSelectionTimeoutMS: 8000 }); await c.connect();
+    await c.db("admin").command({ ping: 1 }); await c.close();
+    console.log("    Atlas reachable — self-clean is possible; proceeding.");
+  })().catch(e => { console.error("FATAL: Atlas unreachable (" + e.message + ") — refusing to ingest a probe that could not be cleaned."); process.exit(1); });
+'
 
 echo "==> [1/6] Mint fresh BTC/USDT.P CPJ payload"
 SECRET="$SECRET" ENTRY="$ENTRY" SL="$STOP_LOSS" TP="$TAKE_PROFIT" PAYLOAD_FILE="$PAYLOAD_FILE" node -e '
@@ -129,17 +162,19 @@ NODE_PATH="$REACTOR_NM" MONGO_URI="$MONGO_URI" SIGNAL_ID="$SIGNAL_ID" node -e '
       ["afi_signal_analytics", "scoring_context"],
       ["afi_signal_analytics", "signal_outcomes"],
     ];
-    let residue = 0;
+    let residue = 0, priorRuns = 0;
     for (const [dbName, colName] of targets) {
       const col = c.db(dbName).collection(colName);
       const r = await col.deleteMany({ signalId: sid });
       const left = await col.countDocuments({ signalId: sid });
-      residue += left;
-      console.log(`    ${dbName}.${colName}: deleted ${r.deletedCount}, residue ${left}`);
+      const others = await col.countDocuments({ signalId: { $regex: "^cpj-", $ne: sid } });
+      residue += left; priorRuns += others;
+      console.log(`    ${dbName}.${colName}: deleted ${r.deletedCount}, residue ${left}${others ? `, PRIOR-RUN cpj residue ${others}` : ""}`);
     }
     await c.close();
     if (residue > 0) { console.error("FATAL: probe residue remains after clean"); process.exit(1); }
-    console.log("    self-clean: PASS (zero probe residue in every store)");
+    if (priorRuns > 0) console.warn(`    WARNING: ${priorRuns} cpj- row(s) from EARLIER runs remain — clean them (owner ruling: no test signals anywhere).`);
+    console.log("    self-clean: PASS (zero residue for the current probe)");
   })().catch(e => { console.error("FATAL:", e.message); process.exit(1); });
 '
 

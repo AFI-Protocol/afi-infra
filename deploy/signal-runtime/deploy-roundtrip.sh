@@ -292,6 +292,24 @@ fi
 RX_REVISION="$(gcloud run services describe afi-reactor --region "$REGION" --project "$PROJECT" \
   --format='value(status.latestReadyRevisionName)')"
 
+# DH-GOV D-DH-4(1): the outcomes Cloud Run Job runs the SAME reactor image —
+# it previously had no deploy path at all, so a service deploy silently left
+# the hourly capture job on an old image. Update it and assert, same as the
+# service (skip with a loud warning only if the job does not exist yet).
+if gcloud run jobs describe afi-capture-outcomes --region "$REGION" --project "$PROJECT" >/dev/null 2>&1; then
+  gcloud run jobs update afi-capture-outcomes --image "$RX_IMG" --region "$REGION" --project "$PROJECT"
+  JOB_IMG="$(gcloud run jobs describe afi-capture-outcomes --region "$REGION" --project "$PROJECT" \
+    --format='value(spec.template.spec.template.spec.containers[0].image)')"
+  if [ "$JOB_IMG" != "$RX_IMG" ]; then
+    echo "FATAL: afi-capture-outcomes job is on '$JOB_IMG' but this run built '$RX_IMG'."
+    echo "       The job update did not take effect — outcome capture would run OLD law."
+    exit 1
+  fi
+  echo "    Outcomes job:    afi-capture-outcomes updated to the same image (verified)"
+else
+  echo "WARNING: Cloud Run Job afi-capture-outcomes not found — outcome capture NOT deployed by this run."
+fi
+
 echo "==> [10/10] Deployed."
 echo "    Reactor revision: $RX_REVISION"
 echo "    Reactor image:    $RX_IMG  (verified serving)"
