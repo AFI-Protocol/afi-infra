@@ -162,14 +162,29 @@ NODE_PATH="$REACTOR_NM" MONGO_URI="$MONGO_URI" SIGNAL_ID="$SIGNAL_ID" node -e '
       ["afi_signal_analytics", "scoring_context"],
       ["afi_signal_analytics", "signal_outcomes"],
     ];
-    let residue = 0, priorRuns = 0;
+    // The scoring-context write is fire-and-forget on the reactor side, so it
+    // can land AFTER a single clean pass (observed live 2026-08-03: one
+    // straggler context row). Sweep until two consecutive passes delete
+    // nothing (bounded), THEN assert residue.
+    let priorRuns = 0;
+    let quietPasses = 0;
+    for (let pass = 1; pass <= 6 && quietPasses < 2; pass++) {
+      let deletedThisPass = 0;
+      for (const [dbName, colName] of targets) {
+        const r = await c.db(dbName).collection(colName).deleteMany({ signalId: sid });
+        deletedThisPass += r.deletedCount;
+        if (r.deletedCount > 0) console.log(`    pass ${pass} ${dbName}.${colName}: deleted ${r.deletedCount}`);
+      }
+      quietPasses = deletedThisPass === 0 ? quietPasses + 1 : 0;
+      if (quietPasses < 2) await new Promise((res) => setTimeout(res, 2500));
+    }
+    let residue = 0;
     for (const [dbName, colName] of targets) {
       const col = c.db(dbName).collection(colName);
-      const r = await col.deleteMany({ signalId: sid });
       const left = await col.countDocuments({ signalId: sid });
       const others = await col.countDocuments({ signalId: { $regex: "^cpj-", $ne: sid } });
       residue += left; priorRuns += others;
-      console.log(`    ${dbName}.${colName}: deleted ${r.deletedCount}, residue ${left}${others ? `, PRIOR-RUN cpj residue ${others}` : ""}`);
+      console.log(`    ${dbName}.${colName}: residue ${left}${others ? `, PRIOR-RUN cpj residue ${others}` : ""}`);
     }
     await c.close();
     if (residue > 0) { console.error("FATAL: probe residue remains after clean"); process.exit(1); }
