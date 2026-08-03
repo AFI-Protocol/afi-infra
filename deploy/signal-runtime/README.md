@@ -19,9 +19,18 @@ Registry, Secret Manager, IAM, logs, and MongoDB Atlas.
 - `../../../afi-reactor/Dockerfile.reactor` — Reactor image (**build context = workspace root**).
 - `roundtrip.env.template` — non-secret config; copy to `roundtrip.env` and fill.
 - `deploy-roundtrip.sh` — idempotent build + deploy (refuses placeholders / any `clarity*` project).
-- `verify-roundtrip.sh` — acceptance: fresh payload → 200+UWR → Atlas read-back of hashes.
+- `verify-roundtrip.sh` — acceptance: fresh payload → 200+UWR → Atlas read-back of hashes →
+  **self-clean** (the probe's rows are deleted from every store and zero residue asserted).
 
 Secrets (Atlas URI, webhook secret) live **only** in Secret Manager — never in these files.
+
+## No test signals persist (owner ruling 2026-08-02; DH-GOV D-DH-4(1))
+
+Test signals must never remain in any store. The acceptance probe is the one
+sanctioned test signal, and it exists only inside the verification window:
+`verify-roundtrip.sh` deletes its evidence, evidence-history, scoring-context,
+and outcome rows before declaring PASS, and fails if any residue survives.
+Never add a test-signal path that skips the self-clean stage.
 
 ## Owner steps (manual, done once) — BLOCKS deployment until complete
 

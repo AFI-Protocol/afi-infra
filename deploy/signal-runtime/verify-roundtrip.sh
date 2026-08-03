@@ -3,9 +3,12 @@
 #
 # Mints a FRESH BTC/USDT.P CPJ signal payload (new signalId + current timestamp,
 # NOT the committed fixture), POSTs it to the live hosted Reactor over Cloud Run
-# IAM auth, asserts HTTP 200 with a UWR score in the response, then reads the
+# IAM auth, asserts HTTP 200 with a UWR score in the response, reads the
 # persisted Evidence V3 record back from MongoDB Atlas and verifies its
-# lifecycleState / recordHash / replayHash.
+# lifecycleState / recordHash / replayHash — then SELF-CLEANS: the probe's
+# rows are deleted from every store and zero residue is asserted (owner
+# ruling 2026-08-02: no test signals present anywhere; DH-GOV D-DH-4(1)).
+# Failure to clean is a script failure.
 #
 # Secrets are pulled from Secret Manager at runtime — never from a file.
 # roundtrip.env supplies only non-secret config (project/region).
@@ -48,7 +51,7 @@ ENTRY="${ENTRY:-63000}"; STOP_LOSS="${STOP_LOSS:-61500}"; TAKE_PROFIT="${TAKE_PR
 PAYLOAD_FILE="$(mktemp)"; RESP_FILE="$(mktemp)"
 trap 'rm -f "$PAYLOAD_FILE" "$RESP_FILE"' EXIT
 
-echo "==> [1/5] Mint fresh BTC/USDT.P CPJ payload"
+echo "==> [1/6] Mint fresh BTC/USDT.P CPJ payload"
 SECRET="$SECRET" ENTRY="$ENTRY" SL="$STOP_LOSS" TP="$TAKE_PROFIT" PAYLOAD_FILE="$PAYLOAD_FILE" node -e '
   const now = new Date().toISOString();
   const uniq = `${Date.now()}-${Math.floor(Math.random()*1e6)}`;
@@ -73,14 +76,14 @@ SECRET="$SECRET" ENTRY="$ENTRY" SL="$STOP_LOSS" TP="$TAKE_PROFIT" PAYLOAD_FILE="
   console.error("    messageId:", payload.provenance.messageId, "postedAt:", now);
 '
 
-echo "==> [2/5] POST to hosted Reactor (Cloud Run IAM)"
+echo "==> [2/6] POST to hosted Reactor (Cloud Run IAM)"
 TOKEN="$(gcloud auth print-identity-token)"
 HTTP_CODE="$(curl -sS -o "$RESP_FILE" -w '%{http_code}' -X POST "$AFI_REACTOR_URL/api/ingest/cpj" \
   -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" --data-binary @"$PAYLOAD_FILE")"
 echo "    HTTP $HTTP_CODE"
 [ "$HTTP_CODE" = "200" ] || { echo "FATAL: expected 200"; cat "$RESP_FILE"; exit 1; }
 
-echo "==> [3/5] Assert UWR score + capture signalId from the HTTP response"
+echo "==> [3/6] Assert UWR score + capture signalId from the HTTP response"
 # console.log emits a trailing newline so `read` returns 0 under `set -e`.
 read -r SIGNAL_ID UWR OUTCOME < <(RESP_FILE="$RESP_FILE" node -e '
   const r = JSON.parse(require("fs").readFileSync(process.env.RESP_FILE,"utf8"));
@@ -92,7 +95,7 @@ read -r SIGNAL_ID UWR OUTCOME < <(RESP_FILE="$RESP_FILE" node -e '
 [ -n "$UWR" ] || { echo "FATAL: could not extract uwrScore"; exit 1; }
 echo "    signalId=$SIGNAL_ID  uwrScore=$UWR  persistence.outcome=$OUTCOME"
 
-echo "==> [4/5] Read Evidence V3 record back from MongoDB Atlas"
+echo "==> [4/6] Read Evidence V3 record back from MongoDB Atlas"
 NODE_PATH="$REACTOR_NM" MONGO_URI="$MONGO_URI" SIGNAL_ID="$SIGNAL_ID" node -e '
   const { MongoClient } = require("mongodb");
   (async () => {
@@ -110,6 +113,37 @@ NODE_PATH="$REACTOR_NM" MONGO_URI="$MONGO_URI" SIGNAL_ID="$SIGNAL_ID" node -e '
   })().catch(e => { console.error("FATAL:", e.message); process.exit(1); });
 '
 
-echo "==> [5/5] ACCEPTANCE PASS"
+echo "==> [5/6] Self-clean: delete the probe's rows everywhere, assert zero residue"
+NODE_PATH="$REACTOR_NM" MONGO_URI="$MONGO_URI" SIGNAL_ID="$SIGNAL_ID" node -e '
+  const { MongoClient } = require("mongodb");
+  (async () => {
+    const c = new MongoClient(process.env.MONGO_URI); await c.connect();
+    const sid = process.env.SIGNAL_ID;
+    if (!sid || !sid.startsWith("cpj-")) {
+      console.error("FATAL: refusing to clean — probe signalId missing or not cpj-prefixed:", sid);
+      process.exit(1);
+    }
+    const targets = [
+      ["afi_scored_signal_evidence", "scored_signal_evidence"],
+      ["afi_scored_signal_evidence", "scored_signal_evidence_history"],
+      ["afi_signal_analytics", "scoring_context"],
+      ["afi_signal_analytics", "signal_outcomes"],
+    ];
+    let residue = 0;
+    for (const [dbName, colName] of targets) {
+      const col = c.db(dbName).collection(colName);
+      const r = await col.deleteMany({ signalId: sid });
+      const left = await col.countDocuments({ signalId: sid });
+      residue += left;
+      console.log(`    ${dbName}.${colName}: deleted ${r.deletedCount}, residue ${left}`);
+    }
+    await c.close();
+    if (residue > 0) { console.error("FATAL: probe residue remains after clean"); process.exit(1); }
+    console.log("    self-clean: PASS (zero probe residue in every store)");
+  })().catch(e => { console.error("FATAL:", e.message); process.exit(1); });
+'
+
+echo "==> [6/6] ACCEPTANCE PASS"
 echo "    Fresh BTC/USDT.P signal -> hosted Reactor (5 real lanes) -> hosted Tiny Brains"
-echo "    -> afi-core UWR=$UWR -> Evidence V3 persisted in Atlas -> hashes verified from the record."
+echo "    -> afi-core UWR=$UWR -> Evidence V3 persisted in Atlas -> hashes verified from the record"
+echo "    -> probe rows self-cleaned from every store (no test signals persist)."
