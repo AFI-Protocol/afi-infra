@@ -258,35 +258,21 @@ export interface OutcomeSnapshot {
 }
 
 /**
- * Vote result from Snapshot governance.
- */
-export interface VaultVoteResult {
-  /** Votes in favor of minting */
-  for: number;
-  /** Votes against minting */
-  against: number;
-  /** Abstention votes */
-  abstain?: number;
-  /** Total voting power that participated */
-  quorum?: number;
-}
-
-/**
- * Signal validator state kinds for the challenge/mint pipeline.
+ * Signal validator state kinds for the qualification/mint pipeline.
+ * (The challenge/voting states were retired with the challenge layer,
+ * CHR-GOV D-CHR-2(1).)
  */
 export type ValidatorStateKind =
   | 'pending'
   | 'decay_pass'
-  | 'challenge_open'
-  | 'voting_complete'
   | 'minted'
   | 'rejected';
 
 /**
- * ValidatorSnapshot: Tracks signal through the validator challenge/mint pipeline.
+ * ValidatorSnapshot: Tracks a signal through the qualification/mint pipeline.
  * 
  * State transitions:
- * PENDING → DECAY_PASS → CHALLENGE_OPEN → VOTING_COMPLETE → MINTED | REJECTED
+ * PENDING → DECAY_PASS → MINTED | REJECTED
  */
 export interface ValidatorSnapshot {
   /** Current state in the validation pipeline */
@@ -301,14 +287,6 @@ export interface ValidatorSnapshot {
   halfLifeHours?: number;
   /** ISO timestamp when signal passed decay threshold */
   decayPassAt?: string;
-  /** Snapshot proposal ID (if challenge opened) */
-  snapshotProposalId?: string;
-  /** ISO timestamp when challenge window opened */
-  challengeOpenedAt?: string;
-  /** ISO timestamp when challenge window closed */
-  challengeClosedAt?: string;
-  /** Vote results from Snapshot */
-  voteResult?: VaultVoteResult;
   /** Transaction hash of mint (if minted) */
   mintTxHash?: string;
   /** Rejection reason (if rejected) */
@@ -342,7 +320,7 @@ export interface VaultedSignalRecord {
     analyzed?: AnalysisSnapshot;
     /** SCORED stage: quantitative assessment */
     scored?: ScoreSnapshot;
-    /** VALIDATOR stage: challenge/mint pipeline state */
+    /** VALIDATOR stage: qualification/mint pipeline state */
     validator?: ValidatorSnapshot;
     /** MINTED stage: on-chain receipt */
     minted?: MintSnapshot;

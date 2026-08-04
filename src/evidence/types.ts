@@ -13,16 +13,16 @@
 
 /** The canonical LIFE-GOV D-LIFE-1 states persistable into the evidence store
  *  (post-scoring; pre-scoring INGESTED/VALIDATED/SCHEMA_REJECTED are not
- *  admissible per LIFE-GOV D-LIFE-6). Kept in sync with the governed schema
- *  enum by the drift-guard test; the schema is authoritative. */
+ *  admissible per LIFE-GOV D-LIFE-6). CHALLENGE_OPEN and CONTESTED were
+ *  retired with the challenge layer (CHR-GOV D-CHR-2(1)). Kept in sync with
+ *  the governed schema enum by the drift-guard test; the schema is
+ *  authoritative. */
 export type EvidenceLifecycleState =
   | "SCORED"
   | "CERTIFIED"
   | "DECERTIFIED"
   | "QUALIFIED"
   | "UNQUALIFIED"
-  | "CHALLENGE_OPEN"
-  | "CONTESTED"
   | "FINALIZED"
   | "FINAL_REJECTED"
   | "EPOCH_ELIGIBLE";

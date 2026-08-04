@@ -147,7 +147,7 @@ A production-ready `MongoTSSDVaultClient` will:
 
 As the AFI Protocol evolves, the Vault schema may need to accommodate:
 
-- New lifecycle stages (e.g. "VALIDATED", "CHALLENGED")
+- New lifecycle stages (e.g. "VALIDATED")
 - Additional metadata fields (e.g. "gasUsed", "slippage")
 - New training flags (e.g. "syntheticData", "adversarialExample")
 
