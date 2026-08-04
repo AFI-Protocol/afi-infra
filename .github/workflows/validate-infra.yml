@@ -73,7 +73,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: AFI-Protocol/afi-config
-          ref: d6f2504805059ffa09d8c1bfcecb67cd47abcea2
+          ref: 666b2475a72153416ef2262b84089d11f395a1de
           path: _afi-config
 
       - name: Setup Node.js

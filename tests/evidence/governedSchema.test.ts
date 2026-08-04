@@ -23,15 +23,14 @@ import {
   afiConfigRoot,
 } from "./fixtures.js";
 
-// The 10 persistable canonical LIFE-GOV states the local type union encodes.
+// The 8 persistable canonical LIFE-GOV states the local type union encodes
+// (CHALLENGE_OPEN/CONTESTED retired per CHR-GOV D-CHR-2(1)).
 const LOCAL_STATES = [
   "SCORED",
   "CERTIFIED",
   "DECERTIFIED",
   "QUALIFIED",
   "UNQUALIFIED",
-  "CHALLENGE_OPEN",
-  "CONTESTED",
   "FINALIZED",
   "FINAL_REJECTED",
   "EPOCH_ELIGIBLE",
