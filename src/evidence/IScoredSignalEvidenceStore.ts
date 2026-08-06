@@ -6,6 +6,8 @@
 
 import type {
   AnyScoredSignalEvidenceRecord,
+  EvidenceIntegrityReport,
+  GovernedCorrectionAct,
   SubmitResult,
   SupersedeResult,
   EvidenceReplayBundle,
@@ -34,21 +36,38 @@ export interface IScoredSignalEvidenceStore {
   submit(record: AnyScoredSignalEvidenceRecord): Promise<SubmitResult>;
 
   /**
-   * A governed correction (MONGO-GOV D-MONGO-5 versioning-by-supersession):
-   * archives the current record immutably as history and installs a new,
-   * higher-`recordVersion` current record. Refused when the current record's
-   * signal has reached a FINALIZED state (immutable-after-FINALIZED). The
-   * superseding record passes the same hash-verified admission, and its
-   * `supersedesRecordHash` MUST equal the superseded record's `recordHash`
-   * (the EV3-GOV D-EV3-4(6) defined supersession-chain computation).
+   * A governed correction (MONGO-GOV D-MONGO-5 versioning-by-supersession, as
+   * amended by CFG-GOV D-CFG-2): archives the current record immutably as
+   * history and installs a new, higher-`recordVersion` current record.
+   * Records are SEALED AT ADMISSION (D-CFG-2(1)), so this path is reachable
+   * ONLY through an explicitly governed correction act naming the record and
+   * its cause — routine writes may never supersede. A record whose signal has
+   * reached a FINALIZED state is never supersedable at all (the CHAIN-GOV
+   * settlement boundary, unchanged). The superseding record passes the same
+   * hash-verified admission, and its `supersedesRecordHash` MUST equal the
+   * superseded record's `recordHash` (the EV3-GOV D-EV3-4(6) defined
+   * supersession-chain computation).
    * @throws EvidenceValidationError | EvidenceContinuityError |
    *         EvidenceHashMismatchError | EvidenceImmutableError |
    *         EvidenceSupersedeError | EvidencePersistenceError
    */
-  supersede(record: AnyScoredSignalEvidenceRecord): Promise<SupersedeResult>;
+  supersede(
+    record: AnyScoredSignalEvidenceRecord,
+    correction?: GovernedCorrectionAct
+  ): Promise<SupersedeResult>;
 
-  /** Read-by-signalId (MONGO-GOV D-MONGO-9a): the current canonical record. */
+  /** Read-by-signalId (MONGO-GOV D-MONGO-9a): the current canonical record,
+   *  verify-on-read (CFG-GOV D-CFG-2(2)) — an unverifiable record surfaces as
+   *  an EvidenceIntegrityFaultError, never a silent serve. */
   getBySignalId(signalId: string): Promise<AnyScoredSignalEvidenceRecord | null>;
+
+  /**
+   * Periodic re-verification over the canonical store (CFG-GOV D-CFG-2(2)):
+   * recomputes both hash commitments for every persisted record version
+   * (current + history) and reports every mismatch. Read-only; faults are
+   * reported, never repaired in place.
+   */
+  verifyIntegrity(): Promise<EvidenceIntegrityReport>;
 
   /**
    * Minimum replay-data retrieval (MONGO-GOV D-MONGO-9b): the projection +

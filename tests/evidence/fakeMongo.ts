@@ -63,6 +63,21 @@ export class FakeCollection {
     return found ? this.clone(found) : null;
   }
 
+  find(filter: Record<string, unknown>): { toArray(): Promise<Doc[]> } {
+    return {
+      toArray: async () =>
+        this.docs.filter((d) => matchesFilter(d, filter)).map((d) => this.clone(d)),
+    };
+  }
+
+  /** Tamper with a stored doc IN PLACE, bypassing every store path — the
+   *  integrity-fault tests' stand-in for out-of-band Atlas mutation. */
+  _tamper(filter: Record<string, unknown>, mutate: (doc: Doc) => void): void {
+    const target = this.docs.find((d) => matchesFilter(d, filter));
+    if (!target) throw new Error("tamper target not found");
+    mutate(target);
+  }
+
   async replaceOne(
     filter: Record<string, unknown>,
     doc: Doc

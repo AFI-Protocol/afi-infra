@@ -6,9 +6,22 @@ import {
   EvidenceImmutableError,
   EvidenceStoreError,
   EvidenceValidationError,
+  type GovernedCorrectionAct,
   type ScoredSignalEvidenceRecordV3,
 } from "../../src/evidence/types.js";
 import { validBaseV3, withRecomputedHashes, deepClone } from "./fixtures.js";
+
+/** An explicitly governed correction act (CFG-GOV D-CFG-2(1)): every canonical
+ *  record is sealed at admission, so supersede() is reachable ONLY through an
+ *  act naming the record and its cause — routine writes may never supersede. */
+function correctionAct(signalId: string): GovernedCorrectionAct {
+  return {
+    signalId,
+    cause: "integration-test governed correction: content defect in the superseded version",
+    authorizedBy:
+      "afi-governance/decisions/analyst-configuration-freedom-v0.1.md D-CFG-2(1) (test)",
+  };
+}
 
 // Real-MongoDB integration. Requires a replica set (supersession uses a
 // multi-document transaction). Env-gated so local runs without Mongo skip — but
@@ -111,8 +124,13 @@ if (required && !hasMongo) {
       const base = record(id, 0.55);
       await store.submit(base);
 
+      // Sealed at admission (CFG-GOV D-CFG-2(1)): the governed correction path
+      // remains reachable, and ONLY it — proven here against the real store.
       const next = superseding(base, 0.6);
-      const res = await store.supersede(next);
+      await expect(store.supersede(next), "no governed correction act").rejects.toBeInstanceOf(
+        EvidenceImmutableError
+      );
+      const res = await store.supersede(next, correctionAct(id));
       expect(res.outcome).toBe("superseded");
       expect(res.toVersion).toBe(2);
 
@@ -149,7 +167,10 @@ if (required && !hasMongo) {
       next.scoredSignal.uwrScore = 0.6;
       withRecomputedHashes(next); // self-hash-valid, chain link wrong
 
-      await expect(store.supersede(next)).rejects.toBeInstanceOf(EvidenceStoreError);
+      // A governed act is supplied so the CHAIN law is what refuses here.
+      await expect(store.supersede(next, correctionAct(id))).rejects.toBeInstanceOf(
+        EvidenceStoreError
+      );
       expect((await store.getBySignalId(id))?.recordVersion ?? 1).toBe(1);
     });
 
@@ -159,8 +180,8 @@ if (required && !hasMongo) {
       await store.submit(base);
 
       const results = await Promise.allSettled([
-        store.supersede(superseding(base, 0.6)),
-        store.supersede(superseding(base, 0.7)),
+        store.supersede(superseding(base, 0.6), correctionAct(id)),
+        store.supersede(superseding(base, 0.7), correctionAct(id)),
       ]);
       const fulfilled = results.filter((r) => r.status === "fulfilled");
       expect(fulfilled).toHaveLength(1); // exactly one wins
@@ -182,8 +203,12 @@ if (required && !hasMongo) {
       withRecomputedHashes(fin);
       await store.submit(fin);
 
+      // Even a governed correction act cannot supersede a finality-phase
+      // record — that boundary is CHAIN-GOV's and is unchanged by D-CFG-2.
       const attempt = superseding(fin, 0.6);
-      await expect(store.supersede(attempt)).rejects.toBeInstanceOf(EvidenceImmutableError);
+      await expect(store.supersede(attempt, correctionAct(id))).rejects.toBeInstanceOf(
+        EvidenceImmutableError
+      );
     });
 
     it("returns null for an unknown signalId (read + replay)", async () => {
