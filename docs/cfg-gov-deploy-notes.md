@@ -44,5 +44,17 @@ with `--confirm-purge-scored-corpus`) **before** deploying the new runtime, so:
 - the fabricated-input opinions are gone while `signal_outcomes` and the raw
   ingest payloads (`scoring_context.rawUss`) remain for offline re-scoring.
 
+**Owner ruling 2026-08-06 — `scoring_context` is scrubbed, not kept whole.** The
+collection held both the observations *and* the worthless scores. The script now
+does a field-level scrub: every document survives, `analystScore` is set to
+`null`, and a self-describing `scorePurge` marker records why. Retained:
+`lenses` (the persisted enriched view that makes offline re-scoring possible),
+`rawUss`, `meta`, `decayParams`, `compositionRef`, `uwrResolvedSource`.
+
+The hourly outcomes cron is unaffected — `scripts/capture-outcomes.mjs` reads
+`ctx.meta?.direction` and `ctx.meta?.symbol` (`:161`, `:176`) and never reads
+`analystScore`. The scrub issues `$set` only; its document count is asserted
+byte-identical before and after.
+
 Then deploy, then apply the Atlas role separation runbook (or apply the roles
 first — either order works; the purge itself needs a write-capable user).
