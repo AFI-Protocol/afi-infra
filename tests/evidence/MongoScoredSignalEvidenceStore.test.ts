@@ -78,7 +78,12 @@ const SCHEMA_INVALID: Array<[string, Mutate]> = [
   ["volatile storage timestamp", (r) => { r.storedAt = "2026-01-15T12:00:07Z"; }],
   ["VaultedSignalRecord brain field", (r) => { r.validator = { verdict: "approve" }; }],
   ["missing providerInvocations", (r) => { delete r.providerInvocations; }],
-  ["four-proof collection", (r) => { r.providerInvocations = r.providerInvocations.slice(0, 4); }],
+  // A four-proof ASCENDING subset is schema-admissible since CFG-GOV D-CFG-3
+  // (composition-scoped count; such a truncation is still refused downstream
+  // by D-EV3-7 recordHash recomputation). Empty and non-ascending collections
+  // remain structurally rejected.
+  ["empty proof collection", (r) => { r.providerInvocations = []; }],
+  ["duplicate category inside a subset", (r) => { r.providerInvocations = [r.providerInvocations[0], r.providerInvocations[3], r.providerInvocations[3]]; }],
   ["mis-ordered proof tuple", (r) => { r.providerInvocations = [...r.providerInvocations].reverse(); }],
   ["missing recordHash", (r) => { delete r.recordHash; }],
   ["missing replayHash", (r) => { delete r.replayHash; }],

@@ -99,16 +99,37 @@ describe("governed-schema validation v3 (vendored EV3-CONTRACT)", () => {
     );
   });
 
-  it("binds the five-proof tuple positionally in the governed order (aiMl, news, pattern, sentiment, technical)", () => {
+  it("binds the proof collection to ascending category subsets (CFG-GOV D-CFG-3: composition-scoped count over the unchanged five-category namespace)", () => {
     const pi = vendoredEvidenceSchemaV3.properties.providerInvocations;
-    expect(pi.minItems).toBe(5);
+    expect(pi.minItems).toBe(1);
     expect(pi.maxItems).toBe(5);
-    expect(pi.additionalItems).toBe(false);
-    const positions = pi.items.map(
-      (item: any) => item.allOf[1].properties.category.const
-    );
-    expect(positions).toEqual([...PROVIDER_INVOCATION_CATEGORIES]);
-    expect(positions).toEqual(["aiMl", "news", "pattern", "sentiment", "technical"]);
+    // The 31 non-empty ascending subsets of the five categories, each a
+    // closed positional tuple over the per-category definitions.
+    expect(pi.oneOf).toHaveLength(31);
+    const defCategory = (ref: string): string => {
+      const name = ref.replace("#/definitions/invocationProof", "");
+      return name.charAt(0).toLowerCase() + name.slice(1);
+    };
+    // The first (full five-lane) branch preserves the governed order — the
+    // pre-amendment tuple froggy still exercises.
+    expect(pi.oneOf[0].items.map((i: any) => defCategory(i.$ref))).toEqual([
+      ...PROVIDER_INVOCATION_CATEGORIES,
+    ]);
+    for (const branch of pi.oneOf) {
+      expect(branch.additionalItems).toBe(false);
+      expect(branch.minItems).toBe(branch.items.length);
+      expect(branch.maxItems).toBe(branch.items.length);
+      const cats = branch.items.map((i: any) => defCategory(i.$ref));
+      expect(cats).toEqual([...cats].sort());
+      expect(new Set(cats).size).toBe(cats.length);
+      cats.forEach((c: string) => expect(PROVIDER_INVOCATION_CATEGORIES).toContain(c));
+    }
+    // Each definition pins the governed proof $ref and its category const.
+    for (const category of PROVIDER_INVOCATION_CATEGORIES) {
+      const defName = `invocationProof${category.charAt(0).toUpperCase()}${category.slice(1)}`;
+      const def = vendoredEvidenceSchemaV3.definitions[defName];
+      expect(def.allOf[1].properties.category.const, defName).toBe(category);
+    }
   });
 
   it("local lifecycleState set matches the governed enum", () => {
@@ -142,10 +163,14 @@ describe("governed-schema validation v3 (vendored EV3-CONTRACT)", () => {
     }
   });
 
-  it("REJECTS proof-tuple violations (count / order / duplicate / unknown category)", () => {
+  it("ADMITS an ascending subset at the schema layer (D-CFG-3: count-vs-composition is the builder's law) and REJECTS tuple violations (empty / order / duplicate / unknown)", () => {
     const four: any = validBaseV3();
     four.providerInvocations = four.providerInvocations.slice(0, 4);
-    expect(validateEvidenceSchemaV3(four).valid, "four proofs").toBe(false);
+    expect(validateEvidenceSchemaV3(four).valid, "four ascending proofs").toBe(true);
+
+    const empty: any = validBaseV3();
+    empty.providerInvocations = [];
+    expect(validateEvidenceSchemaV3(empty).valid, "empty proof set").toBe(false);
 
     const six: any = validBaseV3();
     six.providerInvocations = [

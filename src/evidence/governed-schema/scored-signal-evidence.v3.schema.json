@@ -2,7 +2,7 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "https://afi-protocol.org/schemas/scored-signal-evidence/v3/scored-signal-evidence.schema.json",
   "title": "AFI ScoredSignalEvidence v3 (EV3-CONTRACT — canonical scored-signal evidence contract with provider invocation provenance)",
-  "description": "The canonical scored-signal evidence record contract, v3 — the SOLE current canonical scored-signal evidence contract (EV3-GOV D-EV3-1). It is the v2 record shape carried forward UNCHANGED (the same reused afi.scored-signal.v1 / afi.provenance-record.v1 / CanonicalHash / afi.composition-ref.v1 shapes, the same twelve required and two optional v2 properties, the same lifecycle/finality binder) PLUS EXACTLY THREE new REQUIRED properties: providerInvocations (the five-lane provider invocation proof collection, D-EV3-2), recordHash (the full-record integrity commitment, D-EV3-4), and replayHash (the deterministic semantic/replay commitment, D-EV3-4). v3 is the ACTIVE WRITE CONTRACT and the ONLY current evidence contract: no dual mode, no feature-flagged fallback, no compatibility alias; every active-tree surface of the prior versions is deleted forward-only under D-EV3-8 (git history and the accepted governance ledger are the archive). It remains a THIN, self-identifying evidence record keyed by the governed signalId (OBJ-GOV D-OBJ-1) that CARRIES BY REUSE the canonical afi.scored-signal.v1 projection (OBJ-GOV D-OBJ-5) and its afi.provenance-record.v1 (present per LIFE-GOV D-LIFE-6; replay/verify sufficiency per MONGO-GOV D-MONGO-9), the canonical strategy identity triple (OBJ-GOV D-OBJ-3), explicit schema/object versions (OBJ-GOV D-OBJ-6), the minimum lifecycle/finality fields (LIFE-GOV D-LIFE-1/D-LIFE-4/D-LIFE-6, MONGO-GOV D-MONGO-5), and the required composition reference (FCP-GOV). It is NOT the heavy ReactorScoredSignalDocument and NOT the full VaultedSignalRecord lifecycle brain: runtime/storage baggage (rawUss, lenses, _priceFeedMetadata, rawPayload, volatile processing timestamps) and validator/minted/replayed/training/proprietary lifecycle-brain fields are structurally rejected (additionalProperties:false, and the reused sub-schemas are themselves additionalProperties:false).",
+  "description": "The canonical scored-signal evidence record contract, v3 — the SOLE current canonical scored-signal evidence contract (EV3-GOV D-EV3-1). It is the v2 record shape carried forward UNCHANGED (the same reused afi.scored-signal.v1 / afi.provenance-record.v1 / CanonicalHash / afi.composition-ref.v1 shapes, the same twelve required and two optional v2 properties, the same lifecycle/finality binder) PLUS EXACTLY THREE new REQUIRED properties: providerInvocations (the composition-scoped provider invocation proof collection, D-EV3-2 as amended by CFG-GOV D-CFG-3), recordHash (the full-record integrity commitment, D-EV3-4), and replayHash (the deterministic semantic/replay commitment, D-EV3-4). v3 is the ACTIVE WRITE CONTRACT and the ONLY current evidence contract: no dual mode, no feature-flagged fallback, no compatibility alias; every active-tree surface of the prior versions is deleted forward-only under D-EV3-8 (git history and the accepted governance ledger are the archive). It remains a THIN, self-identifying evidence record keyed by the governed signalId (OBJ-GOV D-OBJ-1) that CARRIES BY REUSE the canonical afi.scored-signal.v1 projection (OBJ-GOV D-OBJ-5) and its afi.provenance-record.v1 (present per LIFE-GOV D-LIFE-6; replay/verify sufficiency per MONGO-GOV D-MONGO-9), the canonical strategy identity triple (OBJ-GOV D-OBJ-3), explicit schema/object versions (OBJ-GOV D-OBJ-6), the minimum lifecycle/finality fields (LIFE-GOV D-LIFE-1/D-LIFE-4/D-LIFE-6, MONGO-GOV D-MONGO-5), and the required composition reference (FCP-GOV). It is NOT the heavy ReactorScoredSignalDocument and NOT the full VaultedSignalRecord lifecycle brain: runtime/storage baggage (rawUss, lenses, _priceFeedMetadata, rawPayload, volatile processing timestamps) and validator/minted/replayed/training/proprietary lifecycle-brain fields are structurally rejected (additionalProperties:false, and the reused sub-schemas are themselves additionalProperties:false).",
   "$comment": "BOUNDARY: schema/contract only — NO storage engine, NO collection names, NO indexes, NO deployment topology, NO migration mechanics, NO API/endpoint. Store-layer requirements that JSON Schema cannot enforce (signalId uniqueness, append-once, immutable-after-FINALIZED, single-writer boundary, operational-vs-canonical separation, recomputation-verified admission per D-EV3-7) are recorded as governed contract constraints in x-afiConstraints and enforced by the accompanying contract-constraint tests and the sole writer, NOT by index/DDL here. Cross-object identifier continuity (top-level signalId == scoredSignal.signalId == provenanceRecord.signalId; strategy-triple agreement) and the D-EV3-5(3) cross-check laws also cannot be enforced by JSON Schema draft-07 and are governed contract constraints (x-afiConstraints) verified by the drift-guard tests and the fail-closed District Two builder. SUPERSESSION (EV3-GOV D-EV3-1/D-EV3-8): v3 is the sole current contract; the prior v1/v2 versions ceased to be active contracts and their in-tree surfaces are DELETED forward-only — no dual-write, no back-write, no archive directory, no deprecation marker; git history and the accepted governance ledger are the archive.",
   "x-afiStatus": "governed-contract",
   "x-afiPartOf": "AFI Evidence V3 and Provider Invocation Provenance v0.1 (EV3-CONTRACT); supersedes the FACTORY-CONTRACT v2 evidence record as the active write contract",
@@ -15,6 +15,7 @@
     "afi-governance/decisions/evidence-v3-provider-provenance-v0.1 (EV3-GOV) D-EV3-6 — credential-safety law: enumerated negative proofs; opaque CredentialRef facts or explicit keyless posture only; structural exclusion plus synthetic-marker test obligation",
     "afi-governance/decisions/evidence-v3-provider-provenance-v0.1 (EV3-GOV) D-EV3-7 — the canonical store admits ONLY v3 on the existing store surface; recordHash/replayHash verified by recomputation before insert; no migration framework (MONGO-IMPL Slot 5 unexercised)",
     "afi-governance/decisions/evidence-v3-provider-provenance-v0.1 (EV3-GOV) D-EV3-8 — forward-only replacement: every active-tree V1/V2 evidence surface deleted after proof; no compatibility shims, aliases, dual-run modes, or tombstones",
+    "afi-governance/decisions/analyst-configuration-freedom-v0.1 (CFG-GOV) D-CFG-2/D-CFG-3 — amendments this schema version reflects: the determination is SEALED AT ADMISSION (finalized true on every canonical record in the SCORED state; the lifecycle/finality binder below no longer forces finalized:false before the finality phase), and proof-set completeness is SCOPED TO THE REGISTERED COMPOSITION's declared lanes — an ascending, unique-by-category subset of the UNCHANGED five-category namespace; every DECLARED lane must still succeed (the D-EV3-5 fail-closed law is retained in full); a lane the analyst did not select is NOT a failure",
     "afi-governance/decisions/factory-configurable-pipelines-v1 (FCP-GOV) D-FCP-3 — the contract-family change-control rule this version satisfies ('any shape change requires a new governance decision and a new schema version'); the required composition reference is carried forward unchanged",
     "afi-governance/decisions/persistence-impl-v0.1.md (MONGO-IMPL) Slot 1 — authorized the original evidence contract whose core this version carries forward; boundary is schema/contract only",
     "afi-governance/decisions/persistence-v0.1.md (MONGO-GOV) D-MONGO-1 — one canonical scored-signal evidence store & its self-identifying persisted shape",
@@ -40,12 +41,12 @@
     "operationalVsCanonical": "This record is CANONICAL evidence only (MONGO-GOV D-MONGO-4). Raw/unscored ingestion, intermediate/DAG state, retry/dead-letter, replay inputs, dedupe caches, and telemetry are OPERATIONAL stores and MUST NOT be represented by this contract. Wall-clock timings, attempt counts, retry/rate-limit facts, and transport noise are NON-CANONICAL operational diagnostics and MUST NOT appear anywhere in this record or in any hashed preimage (EV3-GOV D-EV3-4(7)). The composition ref and the invocation proofs carry HASH PINS and identity facts — never the artifacts, traces, or intermediate payloads themselves.",
     "identifierContinuity": "CROSS-OBJECT (not JSON-Schema-draft-07-enforceable): the top-level signalId MUST equal scoredSignal.signalId AND provenanceRecord.signalId (OBJ-GOV D-OBJ-1, LIFE-GOV D-LIFE-5). The top-level strategy triple (analystId, strategyId, strategyVersion) — all three REQUIRED-present on this evidence record — MUST equal the scoredSignal triple (OBJ-GOV D-OBJ-3). The top-level canonicalizationVersion MUST equal provenanceRecord.canonicalizationVersion (OBJ-GOV D-OBJ-6). Enforced by the drift-guard contract tests.",
     "uwrProfileStamp": "SCORING-PROFILE STAMP, RUNTIME-LAYER (not JSON-Schema-enforceable): the uwrProfile stamp reuses the already-governed PR-UWR-STAMP shape and the PR-UWR-STAMP-SEMANTICS RC-6 source discriminator VERBATIM — this contract adds no stamp semantics, redesigns no UWR, changes no profile value, and does not reopen UP-8/UP-9. The runtime submitter MUST: (a) stamp the profile that ACTUALLY produced the score — never a profile it did not run; (b) build `source` from the provenance the composition path ACTUALLY resolved, propagated explicitly — never re-derived at the stamp site, never read from the environment (RC-6); (c) fail closed — if the profile it was configured to run cannot be resolved/validated, it must refuse to score, so no evidence record and no stamp exist for a failed resolution (RC-4 realizes this for the registry-backed profile). This contract is ANALYST-/STRATEGY-/PROFILE-NEUTRAL and binds no record to any one analyst identity or profile: which profiles a given implementation can emit, and which identities it recognizes, are properties of that implementation's pipeline/runtime — not admission rules of this contract. Enforced by the submitter's runtime guardrails, not by this schema.",
-    "replaySufficiency": "The record is structured for deterministic off-line replay/verify (MONGO-GOV D-MONGO-9): it carries the afi.scored-signal.v1 projection AND the afi.provenance-record.v1, which supplies AT MINIMUM the input + output CanonicalHash digests (required by that shape), plus the enrichment digest and replay pins where present (optional on the reused shape), AND the required composition ref pinning WHAT composed the score. v3 EXTENDS the guarantee with the five provider invocation proofs (WHO/WHAT was invoked per lane, cryptographically bound to the result that entered the join) and the record-level recordHash/replayHash commitments: two evaluations of the same canonical inputs through the same composition MUST produce identical replay projections and identical replayHash values (EV3-GOV D-EV3-4(7)). This is a data guarantee on the record — NOT a read/replay endpoint (ATLAS-GOV reserved).",
+    "replaySufficiency": "The record is structured for deterministic off-line replay/verify (MONGO-GOV D-MONGO-9): it carries the afi.scored-signal.v1 projection AND the afi.provenance-record.v1, which supplies AT MINIMUM the input + output CanonicalHash digests (required by that shape), plus the enrichment digest and replay pins where present (optional on the reused shape), AND the required composition ref pinning WHAT composed the score. v3 EXTENDS the guarantee with the composition-scoped provider invocation proofs — one per lane the registered composition declares (CFG-GOV D-CFG-3) — recording WHO/WHAT was invoked per declared lane, cryptographically bound to the result that entered the join and the record-level recordHash/replayHash commitments: two evaluations of the same canonical inputs through the same composition MUST produce identical replay projections and identical replayHash values (EV3-GOV D-EV3-4(7)). This is a data guarantee on the record — NOT a read/replay endpoint (ATLAS-GOV reserved).",
     "compositionBinding": "COMPOSITION PROVENANCE (carried forward unchanged): composition is REQUIRED on every record — a record whose composition provenance cannot be fully produced MUST NOT be written (fail closed; afi.composition-ref.v1 is itself all-or-nothing). CROSS-OBJECT agreements (tooling/submitter-enforced, not JSON-Schema-enforceable): composition.analystConfigHash MUST equal the resolved registration's analystConfigHash; composition.enrichmentHash MUST equal provenanceRecord.enrichmentHash when that optional field is present; the scorer plugin identified by composition MUST be the one that actually produced scoredSignal. SUPERSESSION (EV3-GOV D-EV3-1/D-EV3-8): v3 is the ACTIVE WRITE CONTRACT and the ONLY current evidence contract — the prior versions ceased to be active contracts, their active-tree surfaces are deleted forward-only, and there is no dual-write, no back-write, and no compatibility alias.",
-    "providerInvocationProofs": "PROVIDER INVOCATION PROVENANCE (v3 addition, EV3-GOV D-EV3-2): providerInvocations MUST contain EXACTLY FIVE afi.provider-invocation-proof.v1 objects — one per governed category, unique by category, deterministically ordered ascending by case-sensitive lexicographic category name (aiMl, news, pattern, sentiment, technical) — bound POSITIONALLY by this schema (a draft-07 five-tuple with per-position category consts, additionalItems:false), which structurally enforces count, order, uniqueness, and the aiMl position. Proof facts are CARRIED, NEVER CONSUMED: no category node, join, analyst, scorer, UWR, or decay path may read them. Facts are captured inside the one live graph pass (D-EV3-5(2)); evidence never re-calls a provider.",
+    "providerInvocationProofs": "PROVIDER INVOCATION PROVENANCE (v3 addition, EV3-GOV D-EV3-2 as amended by CFG-GOV D-CFG-3): providerInvocations MUST contain EXACTLY AS MANY afi.provider-invocation-proof.v1 objects as the record's registered composition declares enrichment lanes — an ascending (case-sensitive lexicographic category name), unique-by-category subset of the UNCHANGED governed five-category namespace (aiMl, news, pattern, sentiment, technical; FCP-GOV D-FCP-1) — bound STRUCTURALLY by this schema (a draft-07 oneOf enumerating all 31 ascending subsets as closed positional tuples with per-position category consts, additionalItems:false), which enforces order, uniqueness, subset membership, and the aiMl-first position wherever aiMl is declared. COUNT-VS-COMPOSITION (exactly the declared lanes — no more, no fewer) is enforced fail-closed by the sole District Two builder against the registered composition (D-CFG-3(4)): the declared lane set is part of the composition, already committed by composition.manifestHash and composition.analystConfigHash, and is not visible to this schema. A lane the analyst did not select is NOT a failure (D-CFG-3(3)); a DECLARED lane that fails or degrades yields NO record (D-EV3-5, retained in full). Proof facts are CARRIED, NEVER CONSUMED: no category node, join, analyst, scorer, UWR, or decay path may read them. Facts are captured inside the one live graph pass (D-EV3-5(2)); evidence never re-calls a provider.",
     "recordHashLaw": "RECORD INTEGRITY COMMITMENT (v3 addition, EV3-GOV D-EV3-4(6)): recordHash carries the CanonicalHash v1 (domain afi.d2.evidence-record, tag CARRIED not hashed) of the FULL v3 record MINUS {recordHash, replayHash}, computed under the composition canonicalization law canonical-json-hashing.v1 (sha256 over UTF-8 of the canonically serialized JSON; top-level exclusion of exactly those two fields). The store verifies it by recomputation before insert (D-EV3-7); a mismatch is rejected, never persisted. This also gives the pre-existing supersedesRecordHash link its defined computation for v3 records.",
     "replayHashLaw": "DETERMINISTIC SEMANTIC/REPLAY COMMITMENT (v3 addition, EV3-GOV D-EV3-4(6)/(7)): replayHash carries the CanonicalHash v1 (domain afi.d2.evidence-replay, tag CARRIED not hashed) of the REPLAY PROJECTION — the record MINUS {recordHash, replayHash, lifecycleState, finalized, recordVersion, supersedesRecordHash} — computed under canonical-json-hashing.v1. Two evaluations of the same canonical inputs through the same composition MUST produce identical replay projections and identical replayHash values; lifecycle progression and supersession custody NEVER move replayHash. No volatile or operational timestamp or duration may enter either preimage; domain-declared normalized evidence timestamps remain admissible exactly as the District 2 hash doctrine provides.",
-    "crossCheckLaws": "FAIL-CLOSED CROSS-CHECKS (builder-enforced, EV3-GOV D-EV3-5(3), not JSON-Schema-enforceable): the five categoryResultHash values MUST equal the recomputed composition-law hashes of the category results the analyst path ACTUALLY consumed at the join; every provider/instance/adapter/credential identity fact MUST equal the boot-verified governed registry resolution of the invocation that occurred; the aiMl proof's Tiny Brains projection MUST pass its profile/resolver/expert cross-checks (including the KAT-proven outputHash recomputation at the service boundary, D-EV3-4(5)). A missing, duplicate, unknown, or mis-ordered proof, any identity or hash mismatch, or any schema-validation failure yields NO scored V3 record — never a fabricated proof, never a downgraded record, never a prior-version write."
+    "crossCheckLaws": "FAIL-CLOSED CROSS-CHECKS (builder-enforced, EV3-GOV D-EV3-5(3), not JSON-Schema-enforceable): the declared-lane categoryResultHash values MUST equal the recomputed composition-law hashes of the category results the analyst path ACTUALLY consumed at the join; every provider/instance/adapter/credential identity fact MUST equal the boot-verified governed registry resolution of the invocation that occurred; the aiMl proof's Tiny Brains projection MUST pass its profile/resolver/expert cross-checks (including the KAT-proven outputHash recomputation at the service boundary, D-EV3-4(5)). A proof set that does not exactly match the declared lane set (a missing declared-lane proof, an undeclared extra proof, a duplicate, an unknown category, or a mis-ordered proof), any identity or hash mismatch, or any schema-validation failure yields NO scored V3 record — never a fabricated proof, never a downgraded record, never a prior-version write."
   },
   "type": "object",
   "additionalProperties": false,
@@ -156,61 +157,41 @@
     },
     "providerInvocations": {
       "type": "array",
-      "minItems": 5,
+      "minItems": 1,
       "maxItems": 5,
-      "additionalItems": false,
-      "description": "REQUIRED five-lane provider invocation proof collection (v3 addition, EV3-GOV D-EV3-2): EXACTLY FIVE afi.provider-invocation-proof.v1 objects, one per governed category, unique by category, deterministically ordered ascending by case-sensitive lexicographic category name — position 0 aiMl, 1 news, 2 pattern, 3 sentiment, 4 technical. The positional five-tuple below structurally enforces count, order, uniqueness, and the aiMl position (and therefore the nested afi.aiml-invocation-proof.v1 at position 0). Proof facts are carried, never consumed (x-afiConstraints.providerInvocationProofs).",
-      "items": [
-        {
-          "allOf": [
-            { "$ref": "https://afi-protocol.org/schemas/provider-invocation-proof/v1/provider-invocation-proof.schema.json" },
-            {
-              "type": "object",
-              "properties": { "category": { "const": "aiMl" } },
-              "required": ["category"]
-            }
-          ]
-        },
-        {
-          "allOf": [
-            { "$ref": "https://afi-protocol.org/schemas/provider-invocation-proof/v1/provider-invocation-proof.schema.json" },
-            {
-              "type": "object",
-              "properties": { "category": { "const": "news" } },
-              "required": ["category"]
-            }
-          ]
-        },
-        {
-          "allOf": [
-            { "$ref": "https://afi-protocol.org/schemas/provider-invocation-proof/v1/provider-invocation-proof.schema.json" },
-            {
-              "type": "object",
-              "properties": { "category": { "const": "pattern" } },
-              "required": ["category"]
-            }
-          ]
-        },
-        {
-          "allOf": [
-            { "$ref": "https://afi-protocol.org/schemas/provider-invocation-proof/v1/provider-invocation-proof.schema.json" },
-            {
-              "type": "object",
-              "properties": { "category": { "const": "sentiment" } },
-              "required": ["category"]
-            }
-          ]
-        },
-        {
-          "allOf": [
-            { "$ref": "https://afi-protocol.org/schemas/provider-invocation-proof/v1/provider-invocation-proof.schema.json" },
-            {
-              "type": "object",
-              "properties": { "category": { "const": "technical" } },
-              "required": ["category"]
-            }
-          ]
-        }
+      "description": "REQUIRED composition-scoped provider invocation proof collection (v3 addition, EV3-GOV D-EV3-2 as amended by CFG-GOV D-CFG-3): EXACTLY AS MANY afi.provider-invocation-proof.v1 objects as the record's registered composition declares enrichment lanes — unique by category, deterministically ordered ascending by case-sensitive lexicographic category name, drawn from the UNCHANGED governed five-category namespace aiMl < news < pattern < sentiment < technical (FCP-GOV D-FCP-1). The oneOf below enumerates ALL 31 ascending subsets of the five categories as closed positional tuples (branches ordered by descending lane count, then lexicographically; the first branch is the full five-lane tuple the pre-amendment law required and the froggy composition still exercises), so order, uniqueness, subset membership, and the aiMl-first position (and therefore the nested afi.aiml-invocation-proof.v1 wherever aiMl is declared) remain STRUCTURALLY enforced. Only count-vs-composition is builder-enforced — the composition is not visible to this schema (x-afiConstraints.providerInvocationProofs). An empty proof set is never admissible. Proof facts are carried, never consumed.",
+      "oneOf": [
+        { "type": "array", "minItems": 5, "maxItems": 5, "additionalItems": false, "items": [{ "$ref": "#/definitions/invocationProofAiMl" }, { "$ref": "#/definitions/invocationProofNews" }, { "$ref": "#/definitions/invocationProofPattern" }, { "$ref": "#/definitions/invocationProofSentiment" }, { "$ref": "#/definitions/invocationProofTechnical" }] },
+        { "type": "array", "minItems": 4, "maxItems": 4, "additionalItems": false, "items": [{ "$ref": "#/definitions/invocationProofAiMl" }, { "$ref": "#/definitions/invocationProofNews" }, { "$ref": "#/definitions/invocationProofPattern" }, { "$ref": "#/definitions/invocationProofSentiment" }] },
+        { "type": "array", "minItems": 4, "maxItems": 4, "additionalItems": false, "items": [{ "$ref": "#/definitions/invocationProofAiMl" }, { "$ref": "#/definitions/invocationProofNews" }, { "$ref": "#/definitions/invocationProofPattern" }, { "$ref": "#/definitions/invocationProofTechnical" }] },
+        { "type": "array", "minItems": 4, "maxItems": 4, "additionalItems": false, "items": [{ "$ref": "#/definitions/invocationProofAiMl" }, { "$ref": "#/definitions/invocationProofNews" }, { "$ref": "#/definitions/invocationProofSentiment" }, { "$ref": "#/definitions/invocationProofTechnical" }] },
+        { "type": "array", "minItems": 4, "maxItems": 4, "additionalItems": false, "items": [{ "$ref": "#/definitions/invocationProofAiMl" }, { "$ref": "#/definitions/invocationProofPattern" }, { "$ref": "#/definitions/invocationProofSentiment" }, { "$ref": "#/definitions/invocationProofTechnical" }] },
+        { "type": "array", "minItems": 4, "maxItems": 4, "additionalItems": false, "items": [{ "$ref": "#/definitions/invocationProofNews" }, { "$ref": "#/definitions/invocationProofPattern" }, { "$ref": "#/definitions/invocationProofSentiment" }, { "$ref": "#/definitions/invocationProofTechnical" }] },
+        { "type": "array", "minItems": 3, "maxItems": 3, "additionalItems": false, "items": [{ "$ref": "#/definitions/invocationProofAiMl" }, { "$ref": "#/definitions/invocationProofNews" }, { "$ref": "#/definitions/invocationProofPattern" }] },
+        { "type": "array", "minItems": 3, "maxItems": 3, "additionalItems": false, "items": [{ "$ref": "#/definitions/invocationProofAiMl" }, { "$ref": "#/definitions/invocationProofNews" }, { "$ref": "#/definitions/invocationProofSentiment" }] },
+        { "type": "array", "minItems": 3, "maxItems": 3, "additionalItems": false, "items": [{ "$ref": "#/definitions/invocationProofAiMl" }, { "$ref": "#/definitions/invocationProofNews" }, { "$ref": "#/definitions/invocationProofTechnical" }] },
+        { "type": "array", "minItems": 3, "maxItems": 3, "additionalItems": false, "items": [{ "$ref": "#/definitions/invocationProofAiMl" }, { "$ref": "#/definitions/invocationProofPattern" }, { "$ref": "#/definitions/invocationProofSentiment" }] },
+        { "type": "array", "minItems": 3, "maxItems": 3, "additionalItems": false, "items": [{ "$ref": "#/definitions/invocationProofAiMl" }, { "$ref": "#/definitions/invocationProofPattern" }, { "$ref": "#/definitions/invocationProofTechnical" }] },
+        { "type": "array", "minItems": 3, "maxItems": 3, "additionalItems": false, "items": [{ "$ref": "#/definitions/invocationProofAiMl" }, { "$ref": "#/definitions/invocationProofSentiment" }, { "$ref": "#/definitions/invocationProofTechnical" }] },
+        { "type": "array", "minItems": 3, "maxItems": 3, "additionalItems": false, "items": [{ "$ref": "#/definitions/invocationProofNews" }, { "$ref": "#/definitions/invocationProofPattern" }, { "$ref": "#/definitions/invocationProofSentiment" }] },
+        { "type": "array", "minItems": 3, "maxItems": 3, "additionalItems": false, "items": [{ "$ref": "#/definitions/invocationProofNews" }, { "$ref": "#/definitions/invocationProofPattern" }, { "$ref": "#/definitions/invocationProofTechnical" }] },
+        { "type": "array", "minItems": 3, "maxItems": 3, "additionalItems": false, "items": [{ "$ref": "#/definitions/invocationProofNews" }, { "$ref": "#/definitions/invocationProofSentiment" }, { "$ref": "#/definitions/invocationProofTechnical" }] },
+        { "type": "array", "minItems": 3, "maxItems": 3, "additionalItems": false, "items": [{ "$ref": "#/definitions/invocationProofPattern" }, { "$ref": "#/definitions/invocationProofSentiment" }, { "$ref": "#/definitions/invocationProofTechnical" }] },
+        { "type": "array", "minItems": 2, "maxItems": 2, "additionalItems": false, "items": [{ "$ref": "#/definitions/invocationProofAiMl" }, { "$ref": "#/definitions/invocationProofNews" }] },
+        { "type": "array", "minItems": 2, "maxItems": 2, "additionalItems": false, "items": [{ "$ref": "#/definitions/invocationProofAiMl" }, { "$ref": "#/definitions/invocationProofPattern" }] },
+        { "type": "array", "minItems": 2, "maxItems": 2, "additionalItems": false, "items": [{ "$ref": "#/definitions/invocationProofAiMl" }, { "$ref": "#/definitions/invocationProofSentiment" }] },
+        { "type": "array", "minItems": 2, "maxItems": 2, "additionalItems": false, "items": [{ "$ref": "#/definitions/invocationProofAiMl" }, { "$ref": "#/definitions/invocationProofTechnical" }] },
+        { "type": "array", "minItems": 2, "maxItems": 2, "additionalItems": false, "items": [{ "$ref": "#/definitions/invocationProofNews" }, { "$ref": "#/definitions/invocationProofPattern" }] },
+        { "type": "array", "minItems": 2, "maxItems": 2, "additionalItems": false, "items": [{ "$ref": "#/definitions/invocationProofNews" }, { "$ref": "#/definitions/invocationProofSentiment" }] },
+        { "type": "array", "minItems": 2, "maxItems": 2, "additionalItems": false, "items": [{ "$ref": "#/definitions/invocationProofNews" }, { "$ref": "#/definitions/invocationProofTechnical" }] },
+        { "type": "array", "minItems": 2, "maxItems": 2, "additionalItems": false, "items": [{ "$ref": "#/definitions/invocationProofPattern" }, { "$ref": "#/definitions/invocationProofSentiment" }] },
+        { "type": "array", "minItems": 2, "maxItems": 2, "additionalItems": false, "items": [{ "$ref": "#/definitions/invocationProofPattern" }, { "$ref": "#/definitions/invocationProofTechnical" }] },
+        { "type": "array", "minItems": 2, "maxItems": 2, "additionalItems": false, "items": [{ "$ref": "#/definitions/invocationProofSentiment" }, { "$ref": "#/definitions/invocationProofTechnical" }] },
+        { "type": "array", "minItems": 1, "maxItems": 1, "additionalItems": false, "items": [{ "$ref": "#/definitions/invocationProofAiMl" }] },
+        { "type": "array", "minItems": 1, "maxItems": 1, "additionalItems": false, "items": [{ "$ref": "#/definitions/invocationProofNews" }] },
+        { "type": "array", "minItems": 1, "maxItems": 1, "additionalItems": false, "items": [{ "$ref": "#/definitions/invocationProofPattern" }] },
+        { "type": "array", "minItems": 1, "maxItems": 1, "additionalItems": false, "items": [{ "$ref": "#/definitions/invocationProofSentiment" }] },
+        { "type": "array", "minItems": 1, "maxItems": 1, "additionalItems": false, "items": [{ "$ref": "#/definitions/invocationProofTechnical" }] }
       ]
     },
     "recordHash": {
@@ -247,6 +228,63 @@
   "then": {
     "properties": {
       "finalized": { "const": true }
+    }
+  },
+  "definitions": {
+    "invocationProofAiMl": {
+      "$comment": "Category-bound provider invocation proof variant (aiMl): the governed afi.provider-invocation-proof.v1 shape with the category pinned. Referenced by the providerInvocations oneOf subset tuples.",
+      "allOf": [
+        { "$ref": "https://afi-protocol.org/schemas/provider-invocation-proof/v1/provider-invocation-proof.schema.json" },
+        {
+          "type": "object",
+          "properties": { "category": { "const": "aiMl" } },
+          "required": ["category"]
+        }
+      ]
+    },
+    "invocationProofNews": {
+      "$comment": "Category-bound provider invocation proof variant (news): the governed afi.provider-invocation-proof.v1 shape with the category pinned. Referenced by the providerInvocations oneOf subset tuples.",
+      "allOf": [
+        { "$ref": "https://afi-protocol.org/schemas/provider-invocation-proof/v1/provider-invocation-proof.schema.json" },
+        {
+          "type": "object",
+          "properties": { "category": { "const": "news" } },
+          "required": ["category"]
+        }
+      ]
+    },
+    "invocationProofPattern": {
+      "$comment": "Category-bound provider invocation proof variant (pattern): the governed afi.provider-invocation-proof.v1 shape with the category pinned. Referenced by the providerInvocations oneOf subset tuples.",
+      "allOf": [
+        { "$ref": "https://afi-protocol.org/schemas/provider-invocation-proof/v1/provider-invocation-proof.schema.json" },
+        {
+          "type": "object",
+          "properties": { "category": { "const": "pattern" } },
+          "required": ["category"]
+        }
+      ]
+    },
+    "invocationProofSentiment": {
+      "$comment": "Category-bound provider invocation proof variant (sentiment): the governed afi.provider-invocation-proof.v1 shape with the category pinned. Referenced by the providerInvocations oneOf subset tuples.",
+      "allOf": [
+        { "$ref": "https://afi-protocol.org/schemas/provider-invocation-proof/v1/provider-invocation-proof.schema.json" },
+        {
+          "type": "object",
+          "properties": { "category": { "const": "sentiment" } },
+          "required": ["category"]
+        }
+      ]
+    },
+    "invocationProofTechnical": {
+      "$comment": "Category-bound provider invocation proof variant (technical): the governed afi.provider-invocation-proof.v1 shape with the category pinned. Referenced by the providerInvocations oneOf subset tuples.",
+      "allOf": [
+        { "$ref": "https://afi-protocol.org/schemas/provider-invocation-proof/v1/provider-invocation-proof.schema.json" },
+        {
+          "type": "object",
+          "properties": { "category": { "const": "technical" } },
+          "required": ["category"]
+        }
+      ]
     }
   }
 }
