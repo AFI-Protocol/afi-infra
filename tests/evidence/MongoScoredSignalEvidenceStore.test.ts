@@ -8,9 +8,11 @@ import {
   EvidenceHashMismatchError,
   EvidenceIdempotencyConflictError,
   EvidenceImmutableError,
+  EvidenceIntegrityFaultError,
   EvidencePersistenceError,
   EvidenceSupersedeError,
   type EvidenceStoreError,
+  type GovernedCorrectionAct,
   type ScoredSignalEvidenceRecordV3,
 } from "../../src/evidence/types.js";
 
@@ -27,6 +29,17 @@ function makeStore() {
     logger: {},
   });
   return { client, db, store };
+}
+
+/** An explicitly governed correction act (CFG-GOV D-CFG-2(1)) naming the
+ *  record and its cause — the ONLY key that opens the supersede() path now
+ *  that records are sealed at admission. */
+function correctionAct(signalId: string): GovernedCorrectionAct {
+  return {
+    signalId,
+    cause: "test-governed correction: content defect in the superseded version",
+    authorizedBy: "afi-governance/decisions/analyst-configuration-freedom-v0.1.md D-CFG-2(1) (test)",
+  };
 }
 
 /** A hash-admissible superseding record: recordVersion 2, supersedesRecordHash
@@ -333,7 +346,7 @@ describe("MongoScoredSignalEvidenceStore (MONGO-STORE / Slot 2, V3-only admissio
       await store.submit(first);
 
       const next = supersedingRecord(first, 0.6);
-      const res = await store.supersede(next);
+      const res = await store.supersede(next, correctionAct(first.signalId));
       expect(res.outcome).toBe("superseded");
       expect(res.fromVersion).toBe(1);
       expect(res.toVersion).toBe(2);
@@ -367,7 +380,7 @@ describe("MongoScoredSignalEvidenceStore (MONGO-STORE / Slot 2, V3-only admissio
       next.supersedesRecordHash = deepClone(first.recordHash);
       withRecomputedHashes(next); // custody fields move recordHash only
 
-      const res = await store.supersede(next);
+      const res = await store.supersede(next, correctionAct(first.signalId));
       expect(res.outcome).toBe("superseded");
       const current = await store.getBySignalId(first.signalId);
       expect(current?.replayHash.value).toBe(first.replayHash.value);
@@ -382,8 +395,8 @@ describe("MongoScoredSignalEvidenceStore (MONGO-STORE / Slot 2, V3-only admissio
       next.recordVersion = 2;
       next.scoredSignal.uwrScore = 0.6; // no supersedesRecordHash
       withRecomputedHashes(next);
-      await expect(store.supersede(next)).rejects.toBeInstanceOf(EvidenceSupersedeError);
-      await expect(store.supersede(next)).rejects.toMatchObject({ code: "SUPERSEDE_INVALID" });
+      await expect(store.supersede(next, correctionAct(next.signalId))).rejects.toBeInstanceOf(EvidenceSupersedeError);
+      await expect(store.supersede(next, correctionAct(next.signalId))).rejects.toMatchObject({ code: "SUPERSEDE_INVALID" });
     });
 
     it("rejects a supersedesRecordHash that is not the predecessor's recordHash (broken chain link)", async () => {
@@ -397,8 +410,8 @@ describe("MongoScoredSignalEvidenceStore (MONGO-STORE / Slot 2, V3-only admissio
       next.scoredSignal.uwrScore = 0.6;
       withRecomputedHashes(next); // self-hash-valid, but the chain link is wrong
 
-      await expect(store.supersede(next)).rejects.toBeInstanceOf(EvidenceSupersedeError);
-      await expect(store.supersede(next)).rejects.toMatchObject({ code: "SUPERSEDE_INVALID" });
+      await expect(store.supersede(next, correctionAct(first.signalId))).rejects.toBeInstanceOf(EvidenceSupersedeError);
+      await expect(store.supersede(next, correctionAct(first.signalId))).rejects.toMatchObject({ code: "SUPERSEDE_INVALID" });
       // Nothing moved: still at version 1, no history entry.
       expect((await store.getBySignalId(first.signalId))?.recordVersion).toBe(1);
       expect(db._collection(HISTORY)._allDocs()).toHaveLength(0);
@@ -413,7 +426,7 @@ describe("MongoScoredSignalEvidenceStore (MONGO-STORE / Slot 2, V3-only admissio
       next.recordVersion = 2;
       next.supersedesRecordHash = deepClone(first.recordHash);
       next.scoredSignal.uwrScore = 0.6; // stale recordHash/replayHash
-      await expect(store.supersede(next)).rejects.toBeInstanceOf(EvidenceHashMismatchError);
+      await expect(store.supersede(next, correctionAct(first.signalId))).rejects.toBeInstanceOf(EvidenceHashMismatchError);
     });
 
     it("refuses to supersede a FINALIZED record (immutable-after-FINALIZED)", async () => {
@@ -422,14 +435,16 @@ describe("MongoScoredSignalEvidenceStore (MONGO-STORE / Slot 2, V3-only admissio
       await store.submit(fin);
 
       const attempt = supersedingRecord(fin, 0.6);
-      await expect(store.supersede(attempt)).rejects.toBeInstanceOf(EvidenceImmutableError);
-      await expect(store.supersede(attempt)).rejects.toMatchObject({ code: "IMMUTABLE_AFTER_FINALIZED" });
+      // Even WITH a governed correction act: finality-phase records are never
+      // supersedable (the CHAIN-GOV settlement boundary, unchanged by CFG-GOV).
+      await expect(store.supersede(attempt, correctionAct(fin.signalId))).rejects.toBeInstanceOf(EvidenceImmutableError);
+      await expect(store.supersede(attempt, correctionAct(fin.signalId))).rejects.toMatchObject({ code: "IMMUTABLE_AFTER_FINALIZED" });
     });
 
     it("refuses to supersede when no current record exists", async () => {
       const { store } = makeStore();
       const next = supersedingRecord(validBaseV3(), 0.6);
-      await expect(store.supersede(next)).rejects.toBeInstanceOf(EvidenceSupersedeError);
+      await expect(store.supersede(next, correctionAct(next.signalId))).rejects.toBeInstanceOf(EvidenceSupersedeError);
     });
 
     it("refuses a non-monotonic recordVersion", async () => {
@@ -442,7 +457,7 @@ describe("MongoScoredSignalEvidenceStore (MONGO-STORE / Slot 2, V3-only admissio
       notNewer.supersedesRecordHash = deepClone(first.recordHash);
       notNewer.scoredSignal.uwrScore = 0.6;
       withRecomputedHashes(notNewer);
-      await expect(store.supersede(notNewer)).rejects.toBeInstanceOf(EvidenceSupersedeError);
+      await expect(store.supersede(notNewer, correctionAct(first.signalId))).rejects.toBeInstanceOf(EvidenceSupersedeError);
     });
 
     it("is ATOMIC: a failure between history archival and current install rolls back", async () => {
@@ -455,7 +470,7 @@ describe("MongoScoredSignalEvidenceStore (MONGO-STORE / Slot 2, V3-only admissio
       db._collection(COLLECTION).failReplaceOnce = 1;
 
       const next = supersedingRecord(first, 0.6);
-      await expect(store.supersede(next)).rejects.toBeInstanceOf(EvidencePersistenceError);
+      await expect(store.supersede(next, correctionAct(first.signalId))).rejects.toBeInstanceOf(EvidencePersistenceError);
 
       // No partial state: the transaction rolled back — history is empty and the
       // current record is untouched at version 1.
@@ -471,8 +486,8 @@ describe("MongoScoredSignalEvidenceStore (MONGO-STORE / Slot 2, V3-only admissio
       await store.submit(first);
 
       const results = await Promise.allSettled([
-        store.supersede(supersedingRecord(first, 0.6)),
-        store.supersede(supersedingRecord(first, 0.7)),
+        store.supersede(supersedingRecord(first, 0.6), correctionAct(first.signalId)),
+        store.supersede(supersedingRecord(first, 0.7), correctionAct(first.signalId)),
       ]);
       const fulfilled = results.filter((r) => r.status === "fulfilled");
       const rejected = results.filter((r) => r.status === "rejected");
@@ -543,6 +558,138 @@ describe("MongoScoredSignalEvidenceStore (MONGO-STORE / Slot 2, V3-only admissio
       const { store } = makeStore();
       expect(await store.getBySignalId("nope")).toBeNull();
       expect(await store.getReplayBundle("nope")).toBeNull();
+    });
+  });
+
+  describe("sealed at admission — the CFG-GOV D-CFG-2(1) supersession gate", () => {
+    it("refuses to supersede a SCORED record WITHOUT a governed correction act", async () => {
+      const { db, store } = makeStore();
+      const first = validBaseV3();
+      await store.submit(first);
+
+      const next = supersedingRecord(first, 0.6);
+      await expect(store.supersede(next)).rejects.toBeInstanceOf(EvidenceImmutableError);
+      await expect(store.supersede(next)).rejects.toMatchObject({
+        code: "IMMUTABLE_AFTER_FINALIZED",
+      });
+      // Nothing moved: still at version 1, no history entry.
+      expect((await store.getBySignalId(first.signalId))?.recordVersion).toBe(1);
+      expect(db._collection(HISTORY)._allDocs()).toHaveLength(0);
+    });
+
+    it("refuses a correction act that does not name the record, carries no cause, or names no authority", async () => {
+      const { store } = makeStore();
+      const first = validBaseV3();
+      await store.submit(first);
+      const next = supersedingRecord(first, 0.6);
+
+      await expect(
+        store.supersede(next, { ...correctionAct(first.signalId), signalId: "someone-else" })
+      ).rejects.toBeInstanceOf(EvidenceImmutableError);
+      await expect(
+        store.supersede(next, { ...correctionAct(first.signalId), cause: "   " })
+      ).rejects.toBeInstanceOf(EvidenceImmutableError);
+      await expect(
+        store.supersede(next, { ...correctionAct(first.signalId), authorizedBy: "" })
+      ).rejects.toBeInstanceOf(EvidenceImmutableError);
+    });
+
+    it("the governed correction path REMAINS REACHABLE: a valid act supersedes a sealed record", async () => {
+      const { db, store } = makeStore();
+      const first = validBaseV3();
+      await store.submit(first);
+
+      const next = supersedingRecord(first, 0.6);
+      const res = await store.supersede(next, correctionAct(first.signalId));
+      expect(res.outcome).toBe("superseded");
+      expect(res.toVersion).toBe(2);
+      expect(db._collection(HISTORY)._allDocs()).toHaveLength(1);
+    });
+  });
+
+  describe("verify-on-read + periodic re-verification (CFG-GOV D-CFG-2(2))", () => {
+    it("an intact record verifies and is served", async () => {
+      const { store } = makeStore();
+      const first = validBaseV3();
+      await store.submit(first);
+      const read = await store.getBySignalId(first.signalId);
+      expect(read?.recordHash.value).toBe(first.recordHash.value);
+    });
+
+    it("a record tampered out-of-band surfaces as an INTEGRITY FAULT on read — never a silent serve", async () => {
+      const { db, store } = makeStore();
+      const first = validBaseV3();
+      await store.submit(first);
+
+      // Out-of-band mutation (what direct Atlas access could do): a scored
+      // value moves but the stored commitments are left behind.
+      db._collection(COLLECTION)._tamper({ signalId: first.signalId }, (doc) => {
+        (doc as { scoredSignal: { uwrScore: number } }).scoredSignal.uwrScore = 0.99;
+      });
+
+      await expect(store.getBySignalId(first.signalId)).rejects.toBeInstanceOf(
+        EvidenceIntegrityFaultError
+      );
+      await expect(store.getBySignalId(first.signalId)).rejects.toMatchObject({
+        code: "INTEGRITY_FAULT",
+        hashKind: "recordHash",
+      });
+      // The replay bundle path serves through the same verified read.
+      await expect(store.getReplayBundle(first.signalId)).rejects.toBeInstanceOf(
+        EvidenceIntegrityFaultError
+      );
+    });
+
+    it("periodic re-verification reports every fault across current AND history, and repairs nothing", async () => {
+      const { db, store } = makeStore();
+      // Seed: one intact record, one record that will be superseded (populating
+      // history), and one record to tamper.
+      const intact = validBaseV3();
+      await store.submit(intact);
+
+      const corrected = deepClone(intact);
+      corrected.signalId = `${intact.signalId}-corrected`;
+      corrected.scoredSignal.signalId = corrected.signalId;
+      corrected.scoredSignal.provenanceRecordRef = `provenance-record:${corrected.signalId}`;
+      corrected.provenanceRecord.signalId = corrected.signalId;
+      withRecomputedHashes(corrected);
+      await store.submit(corrected);
+      await store.supersede(
+        supersedingRecord(corrected, 0.6),
+        correctionAct(corrected.signalId)
+      );
+
+      const tampered = deepClone(intact);
+      tampered.signalId = `${intact.signalId}-tampered`;
+      tampered.scoredSignal.signalId = tampered.signalId;
+      tampered.scoredSignal.provenanceRecordRef = `provenance-record:${tampered.signalId}`;
+      tampered.provenanceRecord.signalId = tampered.signalId;
+      withRecomputedHashes(tampered);
+      await store.submit(tampered);
+      db._collection(COLLECTION)._tamper({ signalId: tampered.signalId }, (doc) => {
+        (doc as { scoredSignal: { uwrScore: number } }).scoredSignal.uwrScore = 0.99;
+      });
+
+      const report = await store.verifyIntegrity();
+      // 3 current + 1 archived history version.
+      expect(report.checked).toBe(4);
+      // The tampered doc faults on BOTH commitments (a scored value is in both
+      // preimages); the intact, corrected, and archived versions verify clean.
+      expect(report.faults.map((f) => f.signalId)).toEqual([
+        tampered.signalId,
+        tampered.signalId,
+      ]);
+      expect(report.faults.map((f) => f.hashKind).sort()).toEqual([
+        "recordHash",
+        "replayHash",
+      ]);
+      expect(report.faults[0]).toMatchObject({ collection: "current", recordVersion: 1 });
+      // Read-only duty: the fault is REPORTED, the stored bytes are untouched.
+      const still = db
+        ._collection(COLLECTION)
+        ._allDocs()
+        .find((d) => d.signalId === tampered.signalId) as unknown as ScoredSignalEvidenceRecordV3;
+      expect(still.scoredSignal.uwrScore).toBe(0.99);
     });
   });
 });

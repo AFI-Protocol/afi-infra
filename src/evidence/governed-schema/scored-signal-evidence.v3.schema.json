@@ -113,7 +113,7 @@
     },
     "finalized": {
       "type": "boolean",
-      "description": "The immutable-after-FINALIZED marker (MONGO-GOV D-MONGO-5). MUST be true iff lifecycleState is a finalization-phase-or-later state (FINALIZED, FINAL_REJECTED, EPOCH_ELIGIBLE) — bound structurally by if/then/else below. Marks storage-custody immutability (append-once, supersede-only), NOT on-chain settlement finality (CHAIN-GOV). FINALIZED/FINAL_REJECTED are written only by the LIFE-GOV finality writer (D-LIFE-4); this contract records the marker, it does not name or wire that writer. EXCLUDED from the replayHash preimage (x-afiConstraints.replayHashLaw)."
+      "description": "The determination-sealed marker (MONGO-GOV D-MONGO-5 as amended by CFG-GOV D-CFG-2): a canonical record becomes immutable at ADMISSION in the SCORED state, so the sole canonical writer sets this true at admission — 'this determination is sealed'. Finalization-phase-or-later states (FINALIZED, FINAL_REJECTED, EPOCH_ELIGIBLE) still REQUIRE true — bound structurally by if/then/else below; records admitted before CFG-GOV carry false and remain valid historical shapes. Marks storage-custody immutability (append-once, supersede only via an explicitly governed correction act per D-CFG-2(1)), NOT on-chain settlement finality (CHAIN-GOV). FINALIZED/FINAL_REJECTED are written only by the LIFE-GOV finality writer (D-LIFE-4); this contract records the marker, it does not name or wire that writer. EXCLUDED from the replayHash preimage (x-afiConstraints.replayHashLaw)."
     },
     "scoredSignal": {
       "$ref": "https://afi-protocol.org/schemas/provenance/v1/scored-signal.schema.json",
@@ -247,11 +247,6 @@
   "then": {
     "properties": {
       "finalized": { "const": true }
-    }
-  },
-  "else": {
-    "properties": {
-      "finalized": { "const": false }
     }
   }
 }

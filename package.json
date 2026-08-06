@@ -29,6 +29,7 @@
     "test:smoke": "vitest run --testNamePattern='smoke'",
     "test:dag": "vitest run --testNamePattern='DAG'",
     "typecheck": "tsc --noEmit",
+    "verify:evidence": "node scripts/verify-evidence-integrity.mjs",
     "build": "tsc --noEmit && tsc -p tsconfig.build.json && node scripts/copy-runtime-assets.mjs",
     "prepare": "npm run build",
     "pack:dry": "npm pack --dry-run"

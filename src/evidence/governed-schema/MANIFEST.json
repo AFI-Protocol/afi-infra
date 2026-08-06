@@ -1,12 +1,12 @@
 {
   "$comment": "Provenance of the vendored governed schema closure (Evidence V3, EV3-GOV D-EV3-1/D-EV3-8: the closure gains the v3 + invocation-proof members and drops every V2 member). Each vendored file is a byte-identical copy of afi-config@afiConfigCommit at afiConfigPath. Enforced by tests/evidence/governedSchemaProvenance.test.ts (always) and scripts/verify-governed-schema-provenance.mjs (CI, against a pinned checkout). Do not hand-edit; regenerate only from an owner-approved afi-config commit.",
   "afiConfigRepo": "https://github.com/AFI-Protocol/afi-config",
-  "afiConfigCommit": "666b2475a72153416ef2262b84089d11f395a1de",
+  "afiConfigCommit": "4f8f5eff11519242ea74f7efa50868b8093b30cb",
   "governedSchemaIdV3": "https://afi-protocol.org/schemas/scored-signal-evidence/v3/scored-signal-evidence.schema.json",
   "sources": {
     "src/evidence/governed-schema/scored-signal-evidence.v3.schema.json": {
       "afiConfigPath": "schemas/scored-signal-evidence/v3/scored-signal-evidence.schema.json",
-      "sha256": "536d2dfb1093fbb15e800152008544496c8f71a04f54d707b0b16154446671e1"
+      "sha256": "df933938c391824c778615e157ddb54f7b12c1b9f54e04885f660ba28358d901"
     },
     "src/evidence/governed-schema/provider-invocation-proof.schema.json": {
       "afiConfigPath": "schemas/provider-invocation-proof/v1/provider-invocation-proof.schema.json",

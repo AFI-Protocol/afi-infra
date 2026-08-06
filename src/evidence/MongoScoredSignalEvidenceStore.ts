@@ -34,13 +34,17 @@ import {
   EvidenceHashMismatchError,
   EvidenceIdempotencyConflictError,
   EvidenceImmutableError,
+  EvidenceIntegrityFaultError,
   EvidencePersistenceError,
   EvidenceStoreError,
   EvidenceSupersedeError,
   EvidenceValidationError,
   EvidenceContinuityError,
   type AnyScoredSignalEvidenceRecord,
+  type EvidenceIntegrityFault,
+  type EvidenceIntegrityReport,
   type EvidenceReplayBundle,
+  type GovernedCorrectionAct,
   type SubmitResult,
   type SupersedeResult,
 } from "./types.js";
@@ -58,6 +62,7 @@ type ReplaceResult = { matchedCount?: number; modifiedCount?: number };
 
 type CollectionLike<T> = {
   findOne(filter: Record<string, unknown>, options?: WriteOptions): Promise<T | null>;
+  find(filter: Record<string, unknown>): { toArray(): Promise<T[]> };
   insertOne(doc: T, options?: WriteOptions): Promise<unknown>;
   replaceOne(
     filter: Record<string, unknown>,
@@ -221,7 +226,10 @@ export class MongoScoredSignalEvidenceStore implements IScoredSignalEvidenceStor
     }
   }
 
-  async supersede(record: AnyScoredSignalEvidenceRecord): Promise<SupersedeResult> {
+  async supersede(
+    record: AnyScoredSignalEvidenceRecord,
+    correction?: GovernedCorrectionAct
+  ): Promise<SupersedeResult> {
     this.assertGovernedRecord(record);
     await this.ensureInitialized();
 
@@ -233,12 +241,21 @@ export class MongoScoredSignalEvidenceStore implements IScoredSignalEvidenceStor
         signalId
       );
     }
+    // Finality-phase records (LIFE-GOV FINALIZED and later) are NEVER
+    // supersedable — that boundary belongs to settlement finality (CHAIN-GOV)
+    // and is unchanged by CFG-GOV D-CFG-2.
     if (isFinalized(currentRecord)) {
       throw new EvidenceImmutableError(
         `Canonical record for signalId '${signalId}' is finalized (${currentRecord.lifecycleState}); it is immutable and cannot be superseded.`,
         signalId
       );
     }
+    // Sealed at admission (CFG-GOV D-CFG-2(1), amending MONGO-GOV D-MONGO-5):
+    // every canonical record is immutable from the moment it is admitted in
+    // the SCORED state. supersede() remains reachable ONLY through an
+    // explicitly governed correction act naming the record and its cause —
+    // routine writes may never supersede.
+    this.assertGovernedCorrectionAct(correction, signalId);
     // The supersession chain must be explicit (MONGO-GOV D-MONGO-5) and, for
     // v3 records, its computation is DEFINED (EV3-GOV D-EV3-4(6)): the
     // caller-provided supersedesRecordHash MUST equal the superseded record's
@@ -309,6 +326,11 @@ export class MongoScoredSignalEvidenceStore implements IScoredSignalEvidenceStor
       await session.endSession();
     }
 
+    this.logger.warn?.(
+      `[evidence] GOVERNED CORRECTION applied for signalId '${signalId}' ` +
+        `(v${fromVersion} -> v${toVersion}): cause='${correction!.cause}', ` +
+        `authorizedBy='${correction!.authorizedBy}' (CFG-GOV D-CFG-2(1)).`
+    );
     return { outcome: "superseded", signalId, fromVersion, toVersion, record: canonical };
   }
 
@@ -324,7 +346,13 @@ export class MongoScoredSignalEvidenceStore implements IScoredSignalEvidenceStor
         signalId
       );
     }
-    return doc ? this.fromDoc(doc) : null;
+    if (!doc) return null;
+    const record = this.fromDoc(doc);
+    // Verify-on-read (CFG-GOV D-CFG-2(2)): every canonical record served
+    // outside the store is re-verified against its own commitments. A
+    // mismatched record surfaces as an integrity fault, never a silent serve.
+    this.assertReadIntegrity(record);
+    return record;
   }
 
   async getReplayBundle(signalId: string): Promise<EvidenceReplayBundle | null> {
@@ -344,6 +372,69 @@ export class MongoScoredSignalEvidenceStore implements IScoredSignalEvidenceStor
       recordHash: record.recordHash,
       replayHash: record.replayHash,
     };
+  }
+
+  /**
+   * Periodic re-verification over the canonical store (CFG-GOV D-CFG-2(2)):
+   * recompute recordHash and replayHash for EVERY persisted record version
+   * (current + history) under canonical-json-hashing.v1 and report every
+   * mismatch as an integrity fault. Faults are REPORTED, never repaired in
+   * place — remediation is a governed act, not a store capability. This is a
+   * read-only pass; it never throws on a fault (the caller — e.g. the
+   * scheduled verifier — decides how to surface the report).
+   */
+  async verifyIntegrity(): Promise<EvidenceIntegrityReport> {
+    await this.ensureInitialized();
+    const faults: EvidenceIntegrityFault[] = [];
+    let checked = 0;
+    const scan = async (
+      collection: CollectionLike<EvidenceDocument>,
+      name: "current" | "history"
+    ): Promise<void> => {
+      let docs: EvidenceDocument[];
+      try {
+        docs = await collection.find({}).toArray();
+      } catch (err) {
+        throw new EvidencePersistenceError(
+          `Integrity re-verification scan failed on the ${name} collection.`,
+          err
+        );
+      }
+      for (const doc of docs) {
+        const record = this.fromDoc(doc);
+        checked += 1;
+        const recordVersion = record.recordVersion ?? 1;
+        const recordFault = this.recordHashFault(record);
+        if (recordFault) {
+          faults.push({
+            signalId: record.signalId,
+            recordVersion,
+            collection: name,
+            hashKind: "recordHash",
+            ...recordFault,
+          });
+        }
+        const replayFault = this.replayHashFault(record);
+        if (replayFault) {
+          faults.push({
+            signalId: record.signalId,
+            recordVersion,
+            collection: name,
+            hashKind: "replayHash",
+            ...replayFault,
+          });
+        }
+      }
+    };
+    await scan(this.current!, "current");
+    await scan(this.history!, "history");
+    if (faults.length > 0) {
+      this.logger.error?.(
+        `[evidence] INTEGRITY FAULT: ${faults.length} hash mismatch(es) across ${checked} persisted record version(s) (CFG-GOV D-CFG-2(2)).`,
+        faults
+      );
+    }
+    return { checked, faults };
   }
 
   async close(): Promise<void> {
@@ -422,6 +513,94 @@ export class MongoScoredSignalEvidenceStore implements IScoredSignalEvidenceStor
         "replayHash",
         record.replayHash.value,
         recomputedReplay,
+        record.signalId
+      );
+    }
+  }
+
+  /** The CFG-GOV D-CFG-2(1) supersession gate: a sealed record may only be
+   *  superseded through an explicitly governed correction act naming the
+   *  record and its cause. Absent or malformed act → immutable refusal. */
+  private assertGovernedCorrectionAct(
+    correction: GovernedCorrectionAct | undefined,
+    signalId: string
+  ): void {
+    const refusal = (detail: string): never => {
+      throw new EvidenceImmutableError(
+        `Canonical record for signalId '${signalId}' is sealed at admission (CFG-GOV D-CFG-2); ` +
+          `supersession requires an explicitly governed correction act naming the record and its cause — ${detail}.`,
+        signalId
+      );
+    };
+    if (!correction) refusal("no correction act was provided");
+    if (correction!.signalId !== signalId) {
+      refusal(
+        `the act names signalId '${String(correction!.signalId)}', not the record being superseded`
+      );
+    }
+    if (typeof correction!.cause !== "string" || correction!.cause.trim() === "") {
+      refusal("the act carries no cause");
+    }
+    if (
+      typeof correction!.authorizedBy !== "string" ||
+      correction!.authorizedBy.trim() === ""
+    ) {
+      refusal("the act names no authorizing governance reference");
+    }
+  }
+
+  /** Recompute recordHash over the record as persisted, honoring the D-EV3-7
+   *  admission subtlety: the store pins `recordVersion: 1` at persistence, but
+   *  a submitter may lawfully have committed the preimage WITHOUT the field
+   *  (omission means 1 per the governed contract). For a version-1 record,
+   *  BOTH forms are the same governed content, so either recomputation may
+   *  match the declared commitment. Returns the recomputed value that was
+   *  compared last (for fault reporting) or null when verified. */
+  private recordHashFault(
+    record: AnyScoredSignalEvidenceRecord
+  ): { declared: string; recomputed: string } | null {
+    const declared = record.recordHash?.value;
+    let recomputed = computeRecordHashValue(record);
+    if (declared === recomputed) return null;
+    if ((record.recordVersion ?? 1) === 1) {
+      const { recordVersion, ...withoutVersion } = record as unknown as Record<string, unknown>;
+      void recordVersion;
+      recomputed = computeRecordHashValue(
+        withoutVersion as unknown as AnyScoredSignalEvidenceRecord
+      );
+      if (declared === recomputed) return null;
+    }
+    return { declared: String(declared), recomputed };
+  }
+
+  /** Recompute replayHash (recordVersion is excluded from its preimage by
+   *  law, so the storage-time pinning is invisible here). */
+  private replayHashFault(
+    record: AnyScoredSignalEvidenceRecord
+  ): { declared: string; recomputed: string } | null {
+    const declared = record.replayHash?.value;
+    const recomputed = computeReplayHashValue(record);
+    return declared === recomputed ? null : { declared: String(declared), recomputed };
+  }
+
+  /** Verify-on-read (CFG-GOV D-CFG-2(2)): recompute both commitments over the
+   *  record as read back; any mismatch is an integrity fault. */
+  private assertReadIntegrity(record: AnyScoredSignalEvidenceRecord): void {
+    const recordFault = this.recordHashFault(record);
+    if (recordFault) {
+      throw new EvidenceIntegrityFaultError(
+        "recordHash",
+        recordFault.declared,
+        recordFault.recomputed,
+        record.signalId
+      );
+    }
+    const replayFault = this.replayHashFault(record);
+    if (replayFault) {
+      throw new EvidenceIntegrityFaultError(
+        "replayHash",
+        replayFault.declared,
+        replayFault.recomputed,
         record.signalId
       );
     }

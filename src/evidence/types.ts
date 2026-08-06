@@ -322,6 +322,43 @@ export interface SupersedeResult {
   record: AnyScoredSignalEvidenceRecord;
 }
 
+/**
+ * An explicitly governed correction act (CFG-GOV D-CFG-2(1)). A canonical
+ * record is sealed at admission; the supersede() path remains reachable ONLY
+ * through an act that names the record and its cause. Routine writes may
+ * never supersede. The act is validated and logged at the mutation boundary;
+ * its durable record is the governance filing `authorizedBy` names — this
+ * store deliberately implements no correction workflow (D-CFG-2 scope-guard).
+ */
+export interface GovernedCorrectionAct {
+  /** The signalId of the record being corrected — must equal the record's. */
+  signalId: string;
+  /** Why the sealed determination is being corrected (non-empty). */
+  cause: string;
+  /** The governing act authorizing this correction (decision/filing ref). */
+  authorizedBy: string;
+}
+
+/** One integrity fault found by verify-on-read or periodic re-verification
+ *  (CFG-GOV D-CFG-2(2)): a persisted record whose declared hash commitment no
+ *  longer equals recomputation under canonical-json-hashing.v1. */
+export interface EvidenceIntegrityFault {
+  signalId: string;
+  recordVersion: number;
+  collection: "current" | "history";
+  hashKind: "recordHash" | "replayHash";
+  declared: string;
+  recomputed: string;
+}
+
+/** Result of a periodic re-verification pass over the canonical store
+ *  (CFG-GOV D-CFG-2(2)). Faults are REPORTED, never repaired in place. */
+export interface EvidenceIntegrityReport {
+  /** Number of persisted record versions checked (current + history). */
+  checked: number;
+  faults: EvidenceIntegrityFault[];
+}
+
 // ---------------------------------------------------------------------------
 // Typed error taxonomy — every store failure is explicit and typed
 // (MONGO-GOV D-MONGO-8 spirit: failures are first-class, never masked).
@@ -334,6 +371,7 @@ export type EvidenceErrorCode =
   | "IDEMPOTENCY_CONFLICT"
   | "IMMUTABLE_AFTER_FINALIZED"
   | "SUPERSEDE_INVALID"
+  | "INTEGRITY_FAULT"
   | "PERSISTENCE_FAILURE";
 
 export abstract class EvidenceStoreError extends Error {
@@ -402,10 +440,39 @@ export class EvidenceIdempotencyConflictError extends EvidenceStoreError {
   readonly code = "IDEMPOTENCY_CONFLICT" as const;
 }
 
-/** Attempt to supersede a record whose signal has reached a FINALIZED state —
- *  the canonical evidence record is immutable (MONGO-GOV D-MONGO-5). */
+/** Attempt to mutate a sealed canonical record outside the governed paths:
+ *  a record is immutable at ADMISSION in the SCORED state (MONGO-GOV
+ *  D-MONGO-5 as amended by CFG-GOV D-CFG-2) and supersession is reachable
+ *  only via an explicitly governed correction act; finality-phase records
+ *  (LIFE-GOV FINALIZED and later) are never supersedable at all. The code
+ *  string predates CFG-GOV and is retained for consumer stability. */
 export class EvidenceImmutableError extends EvidenceStoreError {
   readonly code = "IMMUTABLE_AFTER_FINALIZED" as const;
+}
+
+/** A persisted canonical record failed read-time or periodic hash
+ *  re-verification (CFG-GOV D-CFG-2(2)): the stored bytes no longer match
+ *  their own declared commitments. Surfaced as an integrity fault — the
+ *  record is NEVER silently served. Carries BOUNDED facts only. */
+export class EvidenceIntegrityFaultError extends EvidenceStoreError {
+  readonly code = "INTEGRITY_FAULT" as const;
+  readonly hashKind: "recordHash" | "replayHash";
+  readonly declared: string;
+  readonly recomputed: string;
+  constructor(
+    hashKind: "recordHash" | "replayHash",
+    declared: string,
+    recomputed: string,
+    signalId?: string
+  ) {
+    super(
+      `${hashKind} re-verification failed for persisted signalId '${signalId}': declared ${declared} != recomputed ${recomputed} under canonical-json-hashing.v1 (CFG-GOV D-CFG-2(2) — an unverifiable record is an integrity fault, never silently served).`,
+      signalId
+    );
+    this.hashKind = hashKind;
+    this.declared = declared;
+    this.recomputed = recomputed;
+  }
 }
 
 /** Supersession preconditions unmet (no current record, non-monotonic

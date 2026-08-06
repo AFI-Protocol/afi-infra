@@ -68,7 +68,9 @@ describe("vendored governed schema provenance (MANIFEST integrity)", () => {
   });
 
   it("pins the EV3-CONTRACT closure at the authorizing afi-config commit", () => {
-    expect(manifest.afiConfigCommit).toBe("666b2475a72153416ef2262b84089d11f395a1de");
+    // CFG-GOV re-vendor (D-CFG-2, slot CFG-IMMUTABILITY): the finalized
+    // binding admits records sealed at admission in the SCORED state.
+    expect(manifest.afiConfigCommit).toBe("4f8f5eff11519242ea74f7efa50868b8093b30cb");
     expect(manifest.governedSchemaIdV3).toBe(
       "https://afi-protocol.org/schemas/scored-signal-evidence/v3/scored-signal-evidence.schema.json"
     );
