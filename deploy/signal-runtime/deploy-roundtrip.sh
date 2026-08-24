@@ -310,6 +310,23 @@ else
   echo "WARNING: Cloud Run Job afi-capture-outcomes not found — outcome capture NOT deployed by this run."
 fi
 
+# DLC-GOV DLC-CHECKPOINT: the checkpoint reader job rides the SAME reactor
+# image, same rule as the outcomes job — update and assert so a service
+# deploy never silently leaves the hourly checkpoint on an old image.
+if gcloud run jobs describe afi-checkpoint-reassess --region "$REGION" --project "$PROJECT" >/dev/null 2>&1; then
+  gcloud run jobs update afi-checkpoint-reassess --image "$RX_IMG" --region "$REGION" --project "$PROJECT"
+  CKPT_IMG="$(gcloud run jobs describe afi-checkpoint-reassess --region "$REGION" --project "$PROJECT" \
+    --format='value(spec.template.spec.template.spec.containers[0].image)')"
+  if [ "$CKPT_IMG" != "$RX_IMG" ]; then
+    echo "FATAL: afi-checkpoint-reassess job is on '$CKPT_IMG' but this run built '$RX_IMG'."
+    echo "       The job update did not take effect — checkpoints would run OLD law."
+    exit 1
+  fi
+  echo "    Checkpoint job:  afi-checkpoint-reassess updated to the same image (verified)"
+else
+  echo "WARNING: Cloud Run Job afi-checkpoint-reassess not found — checkpoint reader NOT deployed by this run."
+fi
+
 echo "==> [10/10] Deployed."
 echo "    Reactor revision: $RX_REVISION"
 echo "    Reactor image:    $RX_IMG  (verified serving)"
