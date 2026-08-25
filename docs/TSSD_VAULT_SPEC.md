@@ -89,7 +89,7 @@ Validators and researchers can use `VaultedSignalRecord` for:
 - **Meta-Analysis**: Study which strategies, regimes, or markets perform best over time
 - **Ensemble Methods**: Combine signals from multiple analysts with different scoring approaches
 
-**Note**: PoI (Proof of Intelligence) and PoInsight (Proof of Insight) are validator/agent-level traits tracked in benchkit and validator registries, NOT per-signal fields in TSSD records. The analyst score template captures per-signal scoring data (UWR axes, conviction, market context).
+**Note**: PoI (Proof of Intelligence) and PoInsight (Proof of Insight) are reserved, preserved analyst/validator-level reputation primitives (CONST-GOV D-CONST-5), NOT per-signal fields in TSSD records. Their formula, weighting, and on-chain activation belong to a future CHAIN-GOV / reputation decision; their per-analyst off-chain evidentiary input is the governed analyst calibration record (`afi.analyst-calibration.v1`, CAL-GOV — afi-governance PR #53). The former `afi-benchkit` harness, which carried an ungoverned implementation on that ground, is retired as research tooling under CAL-GOV D-CAL-6; the primitives themselves are not retired, deprecated, or narrowed (D-CAL-5). The analyst score template captures per-signal scoring data (UWR axes, conviction, market context).
 
 The `listForTraining()` method in `ITSSDVaultClient` automatically filters out signals where `includeForModel` is false, respecting analyst preferences.
 
